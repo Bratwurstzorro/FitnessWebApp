@@ -27,8 +27,17 @@ VITE_SUPABASE_PUBLISHABLE_KEY=
 
 ## GitHub Pages
 
-The Vite base path is already configured for `/FitnessWebApp/`.
+The Vite base path is configured for `/FitnessWebApp/`.
 
-In GitHub, enable Pages and use the repository's Pages deployment/build workflow. The browser app itself does not require a private Supabase secret; the publishable key is intended for frontend use and database access is protected by Row Level Security.
+For a first deployment, run the production build locally:
 
-For Supabase Auth, configure the GitHub Pages URL under **Authentication → URL Configuration** as the Site URL and add it as an allowed redirect URL.
+```bash
+npm install
+npm run build
+```
+
+Then configure **Settings → Pages** in GitHub and choose the deployment source you want to use. If using GitHub Actions, the workflow should publish the generated `dist` directory.
+
+The browser app does not require a private Supabase secret; the publishable key is intended for frontend use and database access is protected by Row Level Security.
+
+For Supabase Auth, configure the final GitHub Pages URL under **Authentication → URL Configuration** as the Site URL and add it as an allowed redirect URL.
