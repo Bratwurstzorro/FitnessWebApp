@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 // remains the actual protection for user data in the database.
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bpcvvuibjzfapttefoph.supabase.co'
 const supabasePublishableKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wx-JuVWWscGcGcXYWfZAnYkg_V28Cj8si'
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wx-JuVWWscGcXYWfZAnYkg_V28Cj8si'
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
