@@ -83,10 +83,13 @@ input:focus { border-color: #9eafff; box-shadow: 0 0 0 4px #edf1ff; background: 
 .metric-delta { min-height: 18px; color: #9aa2b0; font-size: 11px; }
 .metric-delta.up { color: #6b78a3; }
 .metric-delta.down { color: #6b78a3; }
+.profile-metric-space { height: 92px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+.profile-metric-card { background: linear-gradient(145deg, #ffffff, #f8faff); }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; padding: 20px; background: rgba(20, 27, 43, .46); display: grid; place-items: center; backdrop-filter: blur(8px); }
 .modal-card { width: min(100%, 900px); max-height: calc(100vh - 40px); overflow: auto; background: var(--card); border-radius: 24px; border: 1px solid rgba(255,255,255,.35); padding: 24px; box-shadow: 0 28px 80px rgba(0,0,0,.18); }
 .chart-modal { width: min(100%, 940px); }
+.profile-modal { width: min(100%, 520px); }
 .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .modal-header h2 { margin: 5px 0 0; font-size: 28px; letter-spacing: -.04em; }
 .icon-button { width: 38px; height: 38px; border-radius: 12px; background: #f3f5f9; color: #687184; font-size: 24px; line-height: 1; }
@@ -95,10 +98,17 @@ input:focus { border-color: #9eafff; box-shadow: 0 0 0 4px #edf1ff; background: 
 .input-with-unit { position: relative; }
 .input-with-unit input { padding-right: 48px; }
 .input-with-unit span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; font-weight: 800; }
+.field-help { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.prefill-help { margin: -4px 0 16px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
 .history-list { display: grid; gap: 8px; margin-top: 10px; }
-.history-row { display: flex; justify-content: space-between; gap: 16px; padding: 11px 13px; border-radius: 12px; background: #f8f9fc; font-size: 13px; }
-.history-row span { color: var(--muted); }
+.history-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 11px 10px 13px; border-radius: 12px; background: #f8f9fc; font-size: 13px; }
+.history-row-main { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex: 1; min-width: 0; }
+.history-row-main span { color: var(--muted); }
+.history-edit { border: 1px solid var(--border); background: white; color: #596275; border-radius: 9px; min-height: 32px; padding: 0 10px; font-size: 11px; font-weight: 800; }
+.history-edit:hover { background: #f3f5f9; }
+.chart-tooltip { border-radius: 12px; border: 1px solid var(--border); background: var(--card); padding: 10px 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.chart-tooltip-date { color: var(--muted); margin-bottom: 4px; }
 
 @media (max-width: 1100px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hero { flex-direction: column; } .hero-add { min-width: 0; width: 100%; } }
-@media (max-width: 700px) { .app-shell { padding: 18px 14px 36px; } .topbar { align-items: flex-start; flex-direction: column; } .top-actions { width: 100%; } .top-actions > * { flex: 1; } .hero h1 { font-size: 35px; } .metric-grid { grid-template-columns: 1fr; } .modal-backdrop { padding: 10px; } .modal-card { padding: 18px; border-radius: 20px; } .form-grid { grid-template-columns: 1fr; } .auth-card { padding: 26px 20px; border-radius: 22px; } .modal-actions { flex-direction: column-reverse; } .modal-actions > * { width: 100%; } }
+@media (max-width: 700px) { .app-shell { padding: 18px 14px 36px; } .topbar { align-items: flex-start; flex-direction: column; } .top-actions { width: 100%; flex-wrap: wrap; } .top-actions > * { flex: 1; } .top-actions .add-button { flex-basis: 100%; } .hero h1 { font-size: 35px; } .metric-grid { grid-template-columns: 1fr; } .modal-backdrop { padding: 10px; } .modal-card { padding: 18px; border-radius: 20px; } .form-grid { grid-template-columns: 1fr; } .auth-card { padding: 26px 20px; border-radius: 22px; } .modal-actions { flex-direction: column-reverse; } .modal-actions > * { width: 100%; } .history-row { align-items: stretch; } .history-row-main { flex-direction: column; align-items: flex-start; gap: 4px; } }
