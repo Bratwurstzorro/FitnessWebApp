@@ -23,6 +23,13 @@ const emptyForm = () => ({
   ...Object.fromEntries(METRICS.map((metric) => [metric.key, ''])),
 })
 
+function sanitizeNumericInput(value) {
+  const normalized = String(value).replace('.', ',')
+  const cleaned = normalized.replace(/[^0-9,]/g, '')
+  const [whole, ...fractionParts] = cleaned.split(',')
+  return fractionParts.length ? `${whole},${fractionParts.join('')}` : whole
+}
+
 function formatValue(value, decimals = 1) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '—'
   return Number(value).toLocaleString('de-DE', {
@@ -38,8 +45,11 @@ function formatDate(date) {
 }
 
 function MetricChart({ rows, metric, large = false }) {
-  const chartRows = rows
+  const chartRows = [...rows]
     .filter((row) => row[metric.key] !== null && row[metric.key] !== undefined)
+    .sort((a, b) =>
+      `${a.measured_at}${a.created_at || ''}`.localeCompare(`${b.measured_at}${b.created_at || ''}`),
+    )
     .map((row) => ({ ...row, value: Number(row[metric.key]), label: formatDate(row.measured_at) }))
 
   if (!chartRows.length) {
@@ -211,7 +221,7 @@ function MeasurementModal({ onClose, onSave, saving }) {
                     type="text"
                     placeholder="—"
                     value={form[metric.key]}
-                    onChange={(e) => update(metric.key, e.target.value)}
+                    onChange={(e) => update(metric.key, sanitizeNumericInput(e.target.value))}
                   />
                   <span>{metric.unit}</span>
                 </div>
@@ -366,7 +376,7 @@ function Dashboard({ user }) {
                   <span className="open-chart">↗</span>
                 </div>
                 <div className="metric-value">{formatValue(value, metric.decimals)} <span>{metric.unit}</span></div>
-                <div className="metric-chart"><MetricChart rows={[...rows].reverse()} metric={metric} /></div>
+                <div className="metric-chart"><MetricChart rows={rows} metric={metric} /></div>
                 <div className={`metric-delta ${direction}`}>
                   {delta === undefined ? 'Ein Messwert' : `${delta > 0 ? '+' : ''}${formatValue(delta, metric.decimals)} ${metric.unit} seit der letzten Messung`}
                 </div>
