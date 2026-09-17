@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { supabase } from './lib/supabase'
 import './styles.css'
 
@@ -59,6 +59,7 @@ function MetricChart({ rows, metric, large = false }) {
   return (
     <ResponsiveContainer width="100%" height={large ? 340 : 88}>
       <LineChart data={chartRows} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
+        <XAxis dataKey="label" hide />
         {large && (
           <Tooltip
             contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--card)' }}
