@@ -223,9 +223,9 @@ function AuthScreen() {
   )
 }
 
-function ProfileModal({ height, defaultChartRange, onClose, onSave, saving }) {
+function ProfileModal({ height, overviewChartRange, onClose, onSave, saving }) {
   const [value, setValue] = useState(inputValue(height))
-  const [chartRange, setChartRange] = useState(normalizeChartRange(defaultChartRange))
+  const [chartRange, setChartRange] = useState(normalizeChartRange(overviewChartRange))
   const [error, setError] = useState('')
 
   async function submit(event) {
@@ -241,7 +241,7 @@ function ProfileModal({ height, defaultChartRange, onClose, onSave, saving }) {
     }
 
     try {
-      await onSave({ height: parsedHeight, defaultChartRange: chartRange })
+      await onSave({ height: parsedHeight, overviewChartRange: chartRange })
     } catch (err) {
       setError(err.message || 'Profil konnte nicht gespeichert werden.')
     }
@@ -273,14 +273,14 @@ function ProfileModal({ height, defaultChartRange, onClose, onSave, saving }) {
           <p className="field-help">Die Größe wird im Profil gespeichert und muss bei neuen Messungen nicht erneut eingegeben werden.</p>
 
           <label className="profile-select-field">
-            📈 Standard-Zeitraum für große Graphen
+            📈 Standard-Zeitraum der Vorschaugraphen
             <select value={chartRange} onChange={(e) => setChartRange(e.target.value)}>
               {CHART_RANGES.map((range) => (
                 <option key={range.key} value={range.key}>{range.label}</option>
               ))}
             </select>
           </label>
-          <p className="field-help">Dieser Zeitraum wird automatisch ausgewählt, wenn du einen Graphen öffnest. Im Graphen kannst du jederzeit umschalten.</p>
+          <p className="field-help">Dieser Zeitraum gilt für die kleinen Graphen in deiner Gesamtübersicht. Vergrößerte Graphen starten immer mit 6 Monaten.</p>
 
           {error && <div className="alert error">{error}</div>}
           <div className="modal-actions">
@@ -386,8 +386,8 @@ function MeasurementModal({ initialValues, row, onClose, onSave, saving }) {
   )
 }
 
-function DetailModal({ metric, rows, defaultChartRange, onClose, onEdit }) {
-  const [chartRange, setChartRange] = useState(() => normalizeChartRange(defaultChartRange))
+function DetailModal({ metric, rows, onClose, onEdit }) {
+  const [chartRange, setChartRange] = useState('6m')
   const filteredRows = useMemo(
     () => rowsForRange(rows, metric, chartRange),
     [rows, metric, chartRange],
@@ -447,8 +447,8 @@ function Dashboard({ user }) {
   const [editingRow, setEditingRow] = useState(null)
   const [saving, setSaving] = useState(false)
   const [profileHeight, setProfileHeight] = useState(user.user_metadata?.height_cm ?? '')
-  const [defaultChartRange, setDefaultChartRange] = useState(
-    normalizeChartRange(user.user_metadata?.default_chart_range),
+  const [overviewChartRange, setOverviewChartRange] = useState(
+    normalizeChartRange(user.user_metadata?.overview_chart_range ?? user.user_metadata?.default_chart_range),
   )
 
   async function loadRows() {
@@ -471,8 +471,14 @@ function Dashboard({ user }) {
 
   useEffect(() => {
     setProfileHeight(user.user_metadata?.height_cm ?? '')
-    setDefaultChartRange(normalizeChartRange(user.user_metadata?.default_chart_range))
-  }, [user.user_metadata?.height_cm, user.user_metadata?.default_chart_range])
+    setOverviewChartRange(
+      normalizeChartRange(user.user_metadata?.overview_chart_range ?? user.user_metadata?.default_chart_range),
+    )
+  }, [
+    user.user_metadata?.height_cm,
+    user.user_metadata?.overview_chart_range,
+    user.user_metadata?.default_chart_range,
+  ])
 
   const lastDate = rows[0]?.measured_at
   const totalMeasurements = rows.length
@@ -527,20 +533,20 @@ function Dashboard({ user }) {
     await loadRows()
   }
 
-  async function saveProfile({ height, defaultChartRange: nextChartRange }) {
+  async function saveProfile({ height, overviewChartRange: nextOverviewChartRange }) {
     setSaving(true)
-    const normalizedRange = normalizeChartRange(nextChartRange)
+    const normalizedRange = normalizeChartRange(nextOverviewChartRange)
     const { data, error: profileError } = await supabase.auth.updateUser({
       data: {
         height_cm: height,
-        default_chart_range: normalizedRange,
+        overview_chart_range: normalizedRange,
       },
     })
     setSaving(false)
     if (profileError) throw profileError
     setProfileHeight(data.user?.user_metadata?.height_cm ?? height ?? '')
-    setDefaultChartRange(
-      normalizeChartRange(data.user?.user_metadata?.default_chart_range ?? normalizedRange),
+    setOverviewChartRange(
+      normalizeChartRange(data.user?.user_metadata?.overview_chart_range ?? normalizedRange),
     )
     setShowProfile(false)
   }
@@ -613,6 +619,7 @@ function Dashboard({ user }) {
             const value = latestValues[metric.key]
             const delta = changeMap[metric.key]
             const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : ''
+            const previewRows = rowsForRange(rows, metric, overviewChartRange)
             return (
               <button className="metric-card" key={metric.key} onClick={() => setSelectedMetric(metric)}>
                 <div className="metric-card-top">
@@ -620,7 +627,7 @@ function Dashboard({ user }) {
                   <span className="open-chart">↗</span>
                 </div>
                 <div className="metric-value">{formatValue(value, metric.decimals)} <span>{metric.unit}</span></div>
-                <div className="metric-chart"><MetricChart rows={rows} metric={metric} /></div>
+                <div className="metric-chart"><MetricChart rows={previewRows} metric={metric} /></div>
                 <div className={`metric-delta ${direction}`}>
                   {delta === undefined ? 'Ein Messwert' : `${delta > 0 ? '+' : ''}${formatValue(delta, metric.decimals)} ${metric.unit} seit der letzten Messung`}
                 </div>
@@ -649,7 +656,7 @@ function Dashboard({ user }) {
       {showProfile && (
         <ProfileModal
           height={displayedHeight}
-          defaultChartRange={defaultChartRange}
+          overviewChartRange={overviewChartRange}
           onClose={() => !saving && setShowProfile(false)}
           onSave={saveProfile}
           saving={saving}
@@ -659,7 +666,6 @@ function Dashboard({ user }) {
         <DetailModal
           metric={selectedMetric}
           rows={rows}
-          defaultChartRange={defaultChartRange}
           onClose={() => setSelectedMetric(null)}
           onEdit={startEditing}
         />
