@@ -49,6 +49,7 @@ function inputValue(value) {
 function measurementForm({ initialValues = {}, row = null } = {}) {
   return {
     measured_at: row?.measured_at || new Date().toISOString().slice(0, 10),
+    note: row?.note || '',
     ...Object.fromEntries(
       METRICS.map((metric) => [metric.key, inputValue(row ? row[metric.key] : initialValues[metric.key])]),
     ),
@@ -102,6 +103,33 @@ function rowsForRange(rows, metric, range) {
   return metricRows.filter((row) => row.measured_at >= cutoff && row.measured_at <= latestDate)
 }
 
+function sortedMetricRows(rows, metric) {
+  return [...rows]
+    .filter((row) => row[metric.key] !== null && row[metric.key] !== undefined)
+    .sort((a, b) =>
+      `${a.measured_at}${a.created_at || ''}`.localeCompare(`${b.measured_at}${b.created_at || ''}`),
+    )
+}
+
+function metricPeriodStats(rows, metric) {
+  const sorted = sortedMetricRows(rows, metric)
+  if (!sorted.length) return null
+
+  const first = sorted[0]
+  const last = sorted[sorted.length - 1]
+  const start = Number(first[metric.key])
+  const current = Number(last[metric.key])
+
+  return {
+    start,
+    current,
+    delta: sorted.length >= 2 ? current - start : null,
+    startDate: first.measured_at,
+    currentDate: last.measured_at,
+    count: sorted.length,
+  }
+}
+
 function ChartTooltip({ active, payload, metric }) {
   if (!active || !payload?.length) return null
 
@@ -114,16 +142,13 @@ function ChartTooltip({ active, payload, metric }) {
       <div>
         <strong>{metric.label}:</strong> {formatValue(point.value, metric.decimals)} {metric.unit}
       </div>
+      {point.note && <div className="chart-tooltip-note">📝 {point.note}</div>}
     </div>
   )
 }
 
 function MetricChart({ rows, metric, large = false }) {
-  const chartRows = [...rows]
-    .filter((row) => row[metric.key] !== null && row[metric.key] !== undefined)
-    .sort((a, b) =>
-      `${a.measured_at}${a.created_at || ''}`.localeCompare(`${b.measured_at}${b.created_at || ''}`),
-    )
+  const chartRows = sortedMetricRows(rows, metric)
     .map((row) => ({ ...row, value: Number(row[metric.key]) }))
 
   if (!chartRows.length) {
@@ -307,7 +332,10 @@ function MeasurementModal({ initialValues, row, onClose, onSave, saving }) {
     setError('')
     if (!form.measured_at) return setError('Bitte ein Messdatum auswählen.')
 
-    const payload = { measured_at: form.measured_at }
+    const payload = {
+      measured_at: form.measured_at,
+      note: form.note.trim() || null,
+    }
     let count = 0
 
     METRICS.forEach((metric) => {
@@ -373,6 +401,17 @@ function MeasurementModal({ initialValues, row, onClose, onSave, saving }) {
               </label>
             ))}
           </div>
+          <label className="note-field">
+            📝 Notiz zur Messung <span className="optional-label">optional</span>
+            <textarea
+              value={form.note}
+              onChange={(e) => update('note', e.target.value.slice(0, 1000))}
+              maxLength={1000}
+              rows={3}
+              placeholder="z. B. morgens nüchtern, nach Urlaub, Trainingspause …"
+            />
+            <small>{form.note.length}/1000 Zeichen</small>
+          </label>
           {error && <div className="alert error">{error}</div>}
           <div className="modal-actions">
             <button type="button" className="secondary-button" onClick={onClose}>Abbrechen</button>
@@ -386,12 +425,14 @@ function MeasurementModal({ initialValues, row, onClose, onSave, saving }) {
   )
 }
 
-function DetailModal({ metric, rows, onClose, onEdit }) {
+function DetailModal({ metric, rows, onClose, onEdit, onDelete, deletingId }) {
   const [chartRange, setChartRange] = useState('6m')
   const filteredRows = useMemo(
     () => rowsForRange(rows, metric, chartRange),
     [rows, metric, chartRange],
   )
+  const stats = useMemo(() => metricPeriodStats(filteredRows, metric), [filteredRows, metric])
+  const rangeLabel = CHART_RANGES.find((range) => range.key === chartRange)?.label || 'Zeitraum'
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
@@ -403,7 +444,9 @@ function DetailModal({ metric, rows, onClose, onEdit }) {
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Schließen">×</button>
         </div>
+
         <MetricChart rows={filteredRows} metric={metric} large />
+
         <div className="chart-range-controls" role="group" aria-label="Zeitraum des Graphen">
           {CHART_RANGES.map((range) => (
             <button
@@ -418,17 +461,61 @@ function DetailModal({ metric, rows, onClose, onEdit }) {
             </button>
           ))}
         </div>
+
+        {stats && (
+          <div className="chart-stats">
+            <div className="chart-stat">
+              <span>Start</span>
+              <strong>{formatValue(stats.start, metric.decimals)} {metric.unit}</strong>
+              <small>{formatDate(stats.startDate)}</small>
+            </div>
+            <div className="chart-stat">
+              <span>Aktuell</span>
+              <strong>{formatValue(stats.current, metric.decimals)} {metric.unit}</strong>
+              <small>{formatDate(stats.currentDate)}</small>
+            </div>
+            <div className="chart-stat chart-stat-change">
+              <span>Veränderung · {rangeLabel}</span>
+              <strong>
+                {stats.delta === null
+                  ? '—'
+                  : `${stats.delta > 0 ? '+' : ''}${formatValue(stats.delta, metric.decimals)} ${metric.unit}`}
+              </strong>
+              <small>{stats.count} {stats.count === 1 ? 'Messwert' : 'Messwerte'}</small>
+            </div>
+          </div>
+        )}
+
+        <div className="history-heading">
+          <div>
+            <span className="eyebrow">Messhistorie</span>
+            <h3>Alle Einträge</h3>
+          </div>
+        </div>
         <div className="history-list">
           {[...rows]
             .filter((historyRow) => historyRow[metric.key] !== null && historyRow[metric.key] !== undefined)
-            .sort((a, b) => `${b.measured_at}${b.created_at}`.localeCompare(`${a.measured_at}${a.created_at}`))
+            .sort((a, b) => `${b.measured_at}${b.created_at || ''}`.localeCompare(`${a.measured_at}${a.created_at || ''}`))
             .map((historyRow) => (
               <div className="history-row" key={historyRow.id}>
-                <div className="history-row-main">
-                  <span>{formatDate(historyRow.measured_at)}</span>
-                  <strong>{formatValue(historyRow[metric.key], metric.decimals)} {metric.unit}</strong>
+                <div className="history-content">
+                  <div className="history-row-main">
+                    <span>{formatDate(historyRow.measured_at)}</span>
+                    <strong>{formatValue(historyRow[metric.key], metric.decimals)} {metric.unit}</strong>
+                  </div>
+                  {historyRow.note && <div className="history-note">📝 {historyRow.note}</div>}
                 </div>
-                <button type="button" className="history-edit" onClick={() => onEdit(historyRow)}>Bearbeiten</button>
+                <div className="history-actions">
+                  <button type="button" className="history-edit" onClick={() => onEdit(historyRow)}>Bearbeiten</button>
+                  <button
+                    type="button"
+                    className="history-delete"
+                    onClick={() => onDelete(historyRow)}
+                    disabled={deletingId === historyRow.id}
+                  >
+                    {deletingId === historyRow.id ? 'Löschen …' : 'Löschen'}
+                  </button>
+                </div>
               </div>
             ))}
         </div>
@@ -446,6 +533,7 @@ function Dashboard({ user }) {
   const [selectedMetric, setSelectedMetric] = useState(null)
   const [editingRow, setEditingRow] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
   const [profileHeight, setProfileHeight] = useState(user.user_metadata?.height_cm ?? '')
   const [overviewChartRange, setOverviewChartRange] = useState(
     normalizeChartRange(user.user_metadata?.overview_chart_range ?? user.user_metadata?.default_chart_range),
@@ -530,6 +618,29 @@ function Dashboard({ user }) {
     setSaving(false)
     if (updateError) throw updateError
     setEditingRow(null)
+    await loadRows()
+  }
+
+  async function deleteMeasurement(row) {
+    const confirmed = window.confirm(
+      `Messung vom ${formatDate(row.measured_at)} wirklich vollständig löschen? Alle Werte dieses Eintrags werden entfernt.`,
+    )
+    if (!confirmed) return
+
+    setDeletingId(row.id)
+    setError('')
+    const { error: deleteError } = await supabase
+      .from('measurements')
+      .delete()
+      .eq('id', row.id)
+      .eq('user_id', user.id)
+    setDeletingId(null)
+
+    if (deleteError) {
+      setError(deleteError.message || 'Messung konnte nicht gelöscht werden.')
+      return
+    }
+
     await loadRows()
   }
 
@@ -668,6 +779,8 @@ function Dashboard({ user }) {
           rows={rows}
           onClose={() => setSelectedMetric(null)}
           onEdit={startEditing}
+          onDelete={deleteMeasurement}
+          deletingId={deletingId}
         />
       )}
     </main>
