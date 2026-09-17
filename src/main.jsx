@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { supabase } from './lib/supabase'
 import './styles.css'
 
@@ -44,13 +44,37 @@ function formatDate(date) {
   )
 }
 
+function ChartTooltip({ active, payload, metric }) {
+  if (!active || !payload?.length) return null
+
+  const point = payload[0]?.payload
+  if (!point?.measured_at) return null
+
+  return (
+    <div
+      style={{
+        borderRadius: 12,
+        border: '1px solid var(--border)',
+        background: 'var(--card)',
+        padding: '10px 12px',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+      }}
+    >
+      <div style={{ color: 'var(--muted)', marginBottom: 4 }}>{formatDate(point.measured_at)}</div>
+      <div>
+        <strong>{metric.label}:</strong> {formatValue(point.value, metric.decimals)} {metric.unit}
+      </div>
+    </div>
+  )
+}
+
 function MetricChart({ rows, metric, large = false }) {
   const chartRows = [...rows]
     .filter((row) => row[metric.key] !== null && row[metric.key] !== undefined)
     .sort((a, b) =>
       `${a.measured_at}${a.created_at || ''}`.localeCompare(`${b.measured_at}${b.created_at || ''}`),
     )
-    .map((row) => ({ ...row, value: Number(row[metric.key]), label: formatDate(row.measured_at) }))
+    .map((row) => ({ ...row, value: Number(row[metric.key]) }))
 
   if (!chartRows.length) {
     return <div className="empty-chart">Noch keine Daten</div>
@@ -59,18 +83,7 @@ function MetricChart({ rows, metric, large = false }) {
   return (
     <ResponsiveContainer width="100%" height={large ? 340 : 88}>
       <LineChart data={chartRows} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
-        <XAxis dataKey="label" hide />
-        {large && (
-          <Tooltip
-            contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--card)' }}
-            labelStyle={{ color: 'var(--muted)' }}
-            formatter={(value) => [
-              `${formatValue(value, metric.decimals)} ${metric.unit}`,
-              metric.label,
-            ]}
-            labelFormatter={(label) => label}
-          />
-        )}
+        {large && <Tooltip content={<ChartTooltip metric={metric} />} />}
         <Line
           type="monotone"
           dataKey="value"
