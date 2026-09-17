@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-
-if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error('Supabase ist noch nicht konfiguriert. Bitte VITE_SUPABASE_URL und VITE_SUPABASE_PUBLISHABLE_KEY setzen.')
-}
+// Publishable keys are designed for browser applications. Row Level Security
+// remains the actual protection for user data in the database.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bpcvvuibjzfapttefoph.supabase.co'
+const supabasePublishableKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wx-JuVWWscGcGcXYWfZAnYkg_V28Cj8si'
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
