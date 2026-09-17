@@ -19,6 +19,21 @@ const METRICS = [
   { key: 'calf_right_cm', label: 'Wade rechts', unit: 'cm', decimals: 1, icon: '🦵' },
 ]
 
+const CHART_RANGES = [
+  { key: '1m', label: '1 Monat', shortLabel: '1M' },
+  { key: '3m', label: '3 Monate', shortLabel: '3M' },
+  { key: '6m', label: '6 Monate', shortLabel: '6M' },
+  { key: '1y', label: '1 Jahr', shortLabel: '1J' },
+  { key: '2y', label: '2 Jahre', shortLabel: '2J' },
+  { key: 'all', label: 'Gesamt', shortLabel: 'Gesamt' },
+]
+
+const VALID_CHART_RANGES = new Set(CHART_RANGES.map((range) => range.key))
+
+function normalizeChartRange(value) {
+  return VALID_CHART_RANGES.has(value) ? value : 'all'
+}
+
 function sanitizeNumericInput(value) {
   const normalized = String(value).replace('.', ',')
   const cleaned = normalized.replace(/[^0-9,]/g, '')
@@ -54,6 +69,39 @@ function formatDate(date) {
   )
 }
 
+function cutoffDate(dateString, range) {
+  if (range === 'all') return null
+
+  const [year, month, day] = dateString.split('-').map(Number)
+  const date = new Date(year, month - 1, day, 12, 0, 0, 0)
+
+  if (range.endsWith('m')) {
+    date.setMonth(date.getMonth() - Number(range.slice(0, -1)))
+  } else if (range.endsWith('y')) {
+    date.setFullYear(date.getFullYear() - Number(range.slice(0, -1)))
+  }
+
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function rowsForRange(rows, metric, range) {
+  const metricRows = rows.filter(
+    (row) => row[metric.key] !== null && row[metric.key] !== undefined,
+  )
+
+  if (!metricRows.length || range === 'all') return metricRows
+
+  const latestDate = metricRows.reduce(
+    (latest, row) => (row.measured_at > latest ? row.measured_at : latest),
+    metricRows[0].measured_at,
+  )
+  const cutoff = cutoffDate(latestDate, range)
+  return metricRows.filter((row) => row.measured_at >= cutoff && row.measured_at <= latestDate)
+}
+
 function ChartTooltip({ active, payload, metric }) {
   if (!active || !payload?.length) return null
 
@@ -79,7 +127,7 @@ function MetricChart({ rows, metric, large = false }) {
     .map((row) => ({ ...row, value: Number(row[metric.key]) }))
 
   if (!chartRows.length) {
-    return <div className="empty-chart">Noch keine Daten</div>
+    return <div className={large ? 'empty-chart large-empty-chart' : 'empty-chart'}>Keine Daten in diesem Zeitraum</div>
   }
 
   return (
@@ -175,20 +223,25 @@ function AuthScreen() {
   )
 }
 
-function ProfileModal({ height, onClose, onSave, saving }) {
+function ProfileModal({ height, defaultChartRange, onClose, onSave, saving }) {
   const [value, setValue] = useState(inputValue(height))
+  const [chartRange, setChartRange] = useState(normalizeChartRange(defaultChartRange))
   const [error, setError] = useState('')
 
   async function submit(event) {
     event.preventDefault()
     setError('')
-    if (!value) return setError('Bitte deine Größe eingeben.')
 
-    const parsed = Number(value.replace(',', '.'))
-    if (!Number.isFinite(parsed) || parsed <= 0) return setError('Bitte eine gültige Größe eingeben.')
+    let parsedHeight = null
+    if (value) {
+      parsedHeight = Number(value.replace(',', '.'))
+      if (!Number.isFinite(parsedHeight) || parsedHeight <= 0) {
+        return setError('Bitte eine gültige Größe eingeben.')
+      }
+    }
 
     try {
-      await onSave(parsed)
+      await onSave({ height: parsedHeight, defaultChartRange: chartRange })
     } catch (err) {
       setError(err.message || 'Profil konnte nicht gespeichert werden.')
     }
@@ -204,7 +257,7 @@ function ProfileModal({ height, onClose, onSave, saving }) {
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Schließen">×</button>
         </div>
-        <form onSubmit={submit}>
+        <form onSubmit={submit} className="profile-form">
           <label>
             📏 Größe
             <div className="input-with-unit">
@@ -213,12 +266,22 @@ function ProfileModal({ height, onClose, onSave, saving }) {
                 type="text"
                 value={value}
                 onChange={(e) => setValue(sanitizeNumericInput(e.target.value))}
-                autoFocus
               />
               <span>cm</span>
             </div>
           </label>
           <p className="field-help">Die Größe wird im Profil gespeichert und muss bei neuen Messungen nicht erneut eingegeben werden.</p>
+
+          <label className="profile-select-field">
+            📈 Standard-Zeitraum für große Graphen
+            <select value={chartRange} onChange={(e) => setChartRange(e.target.value)}>
+              {CHART_RANGES.map((range) => (
+                <option key={range.key} value={range.key}>{range.label}</option>
+              ))}
+            </select>
+          </label>
+          <p className="field-help">Dieser Zeitraum wird automatisch ausgewählt, wenn du einen Graphen öffnest. Im Graphen kannst du jederzeit umschalten.</p>
+
           {error && <div className="alert error">{error}</div>}
           <div className="modal-actions">
             <button type="button" className="secondary-button" onClick={onClose}>Abbrechen</button>
@@ -323,7 +386,13 @@ function MeasurementModal({ initialValues, row, onClose, onSave, saving }) {
   )
 }
 
-function DetailModal({ metric, rows, onClose, onEdit }) {
+function DetailModal({ metric, rows, defaultChartRange, onClose, onEdit }) {
+  const [chartRange, setChartRange] = useState(() => normalizeChartRange(defaultChartRange))
+  const filteredRows = useMemo(
+    () => rowsForRange(rows, metric, chartRange),
+    [rows, metric, chartRange],
+  )
+
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <section className="modal-card chart-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -334,7 +403,21 @@ function DetailModal({ metric, rows, onClose, onEdit }) {
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Schließen">×</button>
         </div>
-        <MetricChart rows={rows} metric={metric} large />
+        <MetricChart rows={filteredRows} metric={metric} large />
+        <div className="chart-range-controls" role="group" aria-label="Zeitraum des Graphen">
+          {CHART_RANGES.map((range) => (
+            <button
+              key={range.key}
+              type="button"
+              className={`chart-range-button ${chartRange === range.key ? 'active' : ''}`}
+              onClick={() => setChartRange(range.key)}
+              aria-pressed={chartRange === range.key}
+              title={range.label}
+            >
+              {range.shortLabel}
+            </button>
+          ))}
+        </div>
         <div className="history-list">
           {[...rows]
             .filter((historyRow) => historyRow[metric.key] !== null && historyRow[metric.key] !== undefined)
@@ -364,6 +447,9 @@ function Dashboard({ user }) {
   const [editingRow, setEditingRow] = useState(null)
   const [saving, setSaving] = useState(false)
   const [profileHeight, setProfileHeight] = useState(user.user_metadata?.height_cm ?? '')
+  const [defaultChartRange, setDefaultChartRange] = useState(
+    normalizeChartRange(user.user_metadata?.default_chart_range),
+  )
 
   async function loadRows() {
     setLoading(true)
@@ -385,7 +471,8 @@ function Dashboard({ user }) {
 
   useEffect(() => {
     setProfileHeight(user.user_metadata?.height_cm ?? '')
-  }, [user.user_metadata?.height_cm])
+    setDefaultChartRange(normalizeChartRange(user.user_metadata?.default_chart_range))
+  }, [user.user_metadata?.height_cm, user.user_metadata?.default_chart_range])
 
   const lastDate = rows[0]?.measured_at
   const totalMeasurements = rows.length
@@ -440,12 +527,21 @@ function Dashboard({ user }) {
     await loadRows()
   }
 
-  async function saveProfileHeight(height) {
+  async function saveProfile({ height, defaultChartRange: nextChartRange }) {
     setSaving(true)
-    const { data, error: profileError } = await supabase.auth.updateUser({ data: { height_cm: height } })
+    const normalizedRange = normalizeChartRange(nextChartRange)
+    const { data, error: profileError } = await supabase.auth.updateUser({
+      data: {
+        height_cm: height,
+        default_chart_range: normalizedRange,
+      },
+    })
     setSaving(false)
     if (profileError) throw profileError
-    setProfileHeight(data.user?.user_metadata?.height_cm ?? height)
+    setProfileHeight(data.user?.user_metadata?.height_cm ?? height ?? '')
+    setDefaultChartRange(
+      normalizeChartRange(data.user?.user_metadata?.default_chart_range ?? normalizedRange),
+    )
     setShowProfile(false)
   }
 
@@ -553,8 +649,9 @@ function Dashboard({ user }) {
       {showProfile && (
         <ProfileModal
           height={displayedHeight}
+          defaultChartRange={defaultChartRange}
           onClose={() => !saving && setShowProfile(false)}
-          onSave={saveProfileHeight}
+          onSave={saveProfile}
           saving={saving}
         />
       )}
@@ -562,6 +659,7 @@ function Dashboard({ user }) {
         <DetailModal
           metric={selectedMetric}
           rows={rows}
+          defaultChartRange={defaultChartRange}
           onClose={() => setSelectedMetric(null)}
           onEdit={startEditing}
         />
