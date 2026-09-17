@@ -4,9 +4,10 @@ import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { supabase } from './lib/supabase'
 import './styles.css'
 
+const HEIGHT_METRIC = { key: 'height_cm', label: 'Größe', unit: 'cm', decimals: 0, icon: '📏' }
+
 const METRICS = [
   { key: 'weight_kg', label: 'Gewicht', unit: 'kg', decimals: 1, icon: '⚖️' },
-  { key: 'height_cm', label: 'Größe', unit: 'cm', decimals: 0, icon: '📏' },
   { key: 'arm_left_cm', label: 'Arm links', unit: 'cm', decimals: 1, icon: '💪' },
   { key: 'arm_right_cm', label: 'Arm rechts', unit: 'cm', decimals: 1, icon: '💪' },
   { key: 'thigh_left_cm', label: 'Oberschenkel links', unit: 'cm', decimals: 1, icon: '🦵' },
@@ -18,11 +19,6 @@ const METRICS = [
   { key: 'calf_right_cm', label: 'Wade rechts', unit: 'cm', decimals: 1, icon: '🦵' },
 ]
 
-const emptyForm = () => ({
-  measured_at: new Date().toISOString().slice(0, 10),
-  ...Object.fromEntries(METRICS.map((metric) => [metric.key, ''])),
-})
-
 function sanitizeNumericInput(value) {
   const normalized = String(value).replace('.', ',')
   const cleaned = normalized.replace(/[^0-9,]/g, '')
@@ -30,8 +26,22 @@ function sanitizeNumericInput(value) {
   return fractionParts.length ? `${whole},${fractionParts.join('')}` : whole
 }
 
+function inputValue(value) {
+  if (value === null || value === undefined || value === '') return ''
+  return String(value).replace('.', ',')
+}
+
+function measurementForm({ initialValues = {}, row = null } = {}) {
+  return {
+    measured_at: row?.measured_at || new Date().toISOString().slice(0, 10),
+    ...Object.fromEntries(
+      METRICS.map((metric) => [metric.key, inputValue(row ? row[metric.key] : initialValues[metric.key])]),
+    ),
+  }
+}
+
 function formatValue(value, decimals = 1) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—'
+  if (value === null || value === undefined || value === '' || Number.isNaN(Number(value))) return '—'
   return Number(value).toLocaleString('de-DE', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -51,16 +61,8 @@ function ChartTooltip({ active, payload, metric }) {
   if (!point?.measured_at) return null
 
   return (
-    <div
-      style={{
-        borderRadius: 12,
-        border: '1px solid var(--border)',
-        background: 'var(--card)',
-        padding: '10px 12px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-      }}
-    >
-      <div style={{ color: 'var(--muted)', marginBottom: 4 }}>{formatDate(point.measured_at)}</div>
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-date">{formatDate(point.measured_at)}</div>
       <div>
         <strong>{metric.label}:</strong> {formatValue(point.value, metric.decimals)} {metric.unit}
       </div>
@@ -173,8 +175,64 @@ function AuthScreen() {
   )
 }
 
-function MeasurementModal({ onClose, onSave, saving }) {
-  const [form, setForm] = useState(emptyForm)
+function ProfileModal({ height, onClose, onSave, saving }) {
+  const [value, setValue] = useState(inputValue(height))
+  const [error, setError] = useState('')
+
+  async function submit(event) {
+    event.preventDefault()
+    setError('')
+    if (!value) return setError('Bitte deine Größe eingeben.')
+
+    const parsed = Number(value.replace(',', '.'))
+    if (!Number.isFinite(parsed) || parsed <= 0) return setError('Bitte eine gültige Größe eingeben.')
+
+    try {
+      await onSave(parsed)
+    } catch (err) {
+      setError(err.message || 'Profil konnte nicht gespeichert werden.')
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <section className="modal-card profile-modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow">Profil</span>
+            <h2>Feste Profildaten</h2>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Schließen">×</button>
+        </div>
+        <form onSubmit={submit}>
+          <label>
+            📏 Größe
+            <div className="input-with-unit">
+              <input
+                inputMode="decimal"
+                type="text"
+                value={value}
+                onChange={(e) => setValue(sanitizeNumericInput(e.target.value))}
+                autoFocus
+              />
+              <span>cm</span>
+            </div>
+          </label>
+          <p className="field-help">Die Größe wird im Profil gespeichert und muss bei neuen Messungen nicht erneut eingegeben werden.</p>
+          {error && <div className="alert error">{error}</div>}
+          <div className="modal-actions">
+            <button type="button" className="secondary-button" onClick={onClose}>Abbrechen</button>
+            <button className="primary-button" disabled={saving}>{saving ? 'Speichern …' : 'Profil speichern'}</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  )
+}
+
+function MeasurementModal({ initialValues, row, onClose, onSave, saving }) {
+  const editing = Boolean(row)
+  const [form, setForm] = useState(() => measurementForm({ initialValues, row }))
   const [error, setError] = useState('')
 
   function update(key, value) {
@@ -188,13 +246,22 @@ function MeasurementModal({ onClose, onSave, saving }) {
 
     const payload = { measured_at: form.measured_at }
     let count = 0
+
     METRICS.forEach((metric) => {
-      const raw = form[metric.key]
+      let raw = form[metric.key]
+
+      if (!editing && raw === '' && initialValues?.[metric.key] !== null && initialValues?.[metric.key] !== undefined) {
+        raw = inputValue(initialValues[metric.key])
+      }
+
       if (raw !== '') {
         payload[metric.key] = Number(String(raw).replace(',', '.'))
         count += 1
+      } else if (editing) {
+        payload[metric.key] = null
       }
     })
+
     if (!count) return setError('Bitte mindestens einen Messwert eingeben.')
 
     try {
@@ -209,8 +276,8 @@ function MeasurementModal({ onClose, onSave, saving }) {
       <section className="modal-card" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <span className="eyebrow">Neue Messung</span>
-            <h2>Fortschritt festhalten</h2>
+            <span className="eyebrow">{editing ? 'Messung bearbeiten' : 'Neue Messung'}</span>
+            <h2>{editing ? 'Falscheingabe korrigieren' : 'Fortschritt festhalten'}</h2>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Schließen">×</button>
         </div>
@@ -225,6 +292,7 @@ function MeasurementModal({ onClose, onSave, saving }) {
               required
             />
           </label>
+          {!editing && <p className="field-help prefill-help">Vorhandene Werte sind mit deiner letzten bekannten Messung vorbelegt. Du musst nur Änderungen anpassen.</p>}
           <div className="form-grid">
             {METRICS.map((metric) => (
               <label key={metric.key}>
@@ -245,7 +313,9 @@ function MeasurementModal({ onClose, onSave, saving }) {
           {error && <div className="alert error">{error}</div>}
           <div className="modal-actions">
             <button type="button" className="secondary-button" onClick={onClose}>Abbrechen</button>
-            <button className="primary-button" disabled={saving}>{saving ? 'Speichern …' : 'Messung speichern'}</button>
+            <button className="primary-button" disabled={saving}>
+              {saving ? 'Speichern …' : editing ? 'Änderungen speichern' : 'Messung speichern'}
+            </button>
           </div>
         </form>
       </section>
@@ -253,7 +323,7 @@ function MeasurementModal({ onClose, onSave, saving }) {
   )
 }
 
-function DetailModal({ metric, rows, onClose }) {
+function DetailModal({ metric, rows, onClose, onEdit }) {
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <section className="modal-card chart-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -267,12 +337,15 @@ function DetailModal({ metric, rows, onClose }) {
         <MetricChart rows={rows} metric={metric} large />
         <div className="history-list">
           {[...rows]
-            .filter((row) => row[metric.key] !== null && row[metric.key] !== undefined)
+            .filter((historyRow) => historyRow[metric.key] !== null && historyRow[metric.key] !== undefined)
             .sort((a, b) => `${b.measured_at}${b.created_at}`.localeCompare(`${a.measured_at}${a.created_at}`))
-            .map((row) => (
-              <div className="history-row" key={row.id}>
-                <span>{formatDate(row.measured_at)}</span>
-                <strong>{formatValue(row[metric.key], metric.decimals)} {metric.unit}</strong>
+            .map((historyRow) => (
+              <div className="history-row" key={historyRow.id}>
+                <div className="history-row-main">
+                  <span>{formatDate(historyRow.measured_at)}</span>
+                  <strong>{formatValue(historyRow[metric.key], metric.decimals)} {metric.unit}</strong>
+                </div>
+                <button type="button" className="history-edit" onClick={() => onEdit(historyRow)}>Bearbeiten</button>
               </div>
             ))}
         </div>
@@ -286,8 +359,11 @@ function Dashboard({ user }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [selectedMetric, setSelectedMetric] = useState(null)
+  const [editingRow, setEditingRow] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [profileHeight, setProfileHeight] = useState(user.user_metadata?.height_cm ?? '')
 
   async function loadRows() {
     setLoading(true)
@@ -307,9 +383,28 @@ function Dashboard({ user }) {
     loadRows()
   }, [user.id])
 
-  const latest = rows[0]
-  const lastDate = latest?.measured_at
+  useEffect(() => {
+    setProfileHeight(user.user_metadata?.height_cm ?? '')
+  }, [user.user_metadata?.height_cm])
+
+  const lastDate = rows[0]?.measured_at
   const totalMeasurements = rows.length
+
+  const latestValues = useMemo(() => {
+    const result = {}
+    METRICS.forEach((metric) => {
+      const found = rows.find((row) => row[metric.key] !== null && row[metric.key] !== undefined)
+      result[metric.key] = found?.[metric.key] ?? null
+    })
+    return result
+  }, [rows])
+
+  const historicalHeight = useMemo(() => {
+    const found = rows.find((row) => row.height_cm !== null && row.height_cm !== undefined)
+    return found?.height_cm ?? ''
+  }, [rows])
+
+  const displayedHeight = profileHeight || historicalHeight
 
   const changeMap = useMemo(() => {
     const result = {}
@@ -331,6 +426,34 @@ function Dashboard({ user }) {
     await loadRows()
   }
 
+  async function updateMeasurement(payload) {
+    if (!editingRow) return
+    setSaving(true)
+    const { error: updateError } = await supabase
+      .from('measurements')
+      .update(payload)
+      .eq('id', editingRow.id)
+      .eq('user_id', user.id)
+    setSaving(false)
+    if (updateError) throw updateError
+    setEditingRow(null)
+    await loadRows()
+  }
+
+  async function saveProfileHeight(height) {
+    setSaving(true)
+    const { data, error: profileError } = await supabase.auth.updateUser({ data: { height_cm: height } })
+    setSaving(false)
+    if (profileError) throw profileError
+    setProfileHeight(data.user?.user_metadata?.height_cm ?? height)
+    setShowProfile(false)
+  }
+
+  function startEditing(row) {
+    setSelectedMetric(null)
+    setEditingRow(row)
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
   }
@@ -346,6 +469,7 @@ function Dashboard({ user }) {
           </div>
         </div>
         <div className="top-actions">
+          <button className="secondary-button" onClick={() => setShowProfile(true)}>Profil</button>
           <button className="secondary-button" onClick={signOut}>Abmelden</button>
           <button className="primary-button add-button" onClick={() => setShowAdd(true)}>＋ Neue Messung</button>
         </div>
@@ -362,7 +486,7 @@ function Dashboard({ user }) {
         </div>
         <button className="hero-add" onClick={() => setShowAdd(true)}>
           <span>＋</span>
-          <div><strong>Messung hinzufügen</strong><small>Datum und aktuelle Werte</small></div>
+          <div><strong>Messung hinzufügen</strong><small>Letzte Werte sind bereits vorbelegt</small></div>
         </button>
       </section>
 
@@ -379,8 +503,18 @@ function Dashboard({ user }) {
         </section>
       ) : (
         <section className="metric-grid">
+          <button className="metric-card profile-metric-card" onClick={() => setShowProfile(true)}>
+            <div className="metric-card-top">
+              <div className="metric-name"><span>{HEIGHT_METRIC.icon}</span>{HEIGHT_METRIC.label}</div>
+              <span className="open-chart">✎</span>
+            </div>
+            <div className="metric-value">{formatValue(displayedHeight, HEIGHT_METRIC.decimals)} <span>{HEIGHT_METRIC.unit}</span></div>
+            <div className="profile-metric-space">Fester Profilwert</div>
+            <div className="metric-delta">Ändern über „Profil“</div>
+          </button>
+
           {METRICS.map((metric) => {
-            const value = latest?.[metric.key]
+            const value = latestValues[metric.key]
             const delta = changeMap[metric.key]
             const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : ''
             return (
@@ -400,8 +534,38 @@ function Dashboard({ user }) {
         </section>
       )}
 
-      {showAdd && <MeasurementModal onClose={() => !saving && setShowAdd(false)} onSave={addMeasurement} saving={saving} />}
-      {selectedMetric && <DetailModal metric={selectedMetric} rows={rows} onClose={() => setSelectedMetric(null)} />}
+      {showAdd && (
+        <MeasurementModal
+          initialValues={latestValues}
+          onClose={() => !saving && setShowAdd(false)}
+          onSave={addMeasurement}
+          saving={saving}
+        />
+      )}
+      {editingRow && (
+        <MeasurementModal
+          row={editingRow}
+          onClose={() => !saving && setEditingRow(null)}
+          onSave={updateMeasurement}
+          saving={saving}
+        />
+      )}
+      {showProfile && (
+        <ProfileModal
+          height={displayedHeight}
+          onClose={() => !saving && setShowProfile(false)}
+          onSave={saveProfileHeight}
+          saving={saving}
+        />
+      )}
+      {selectedMetric && (
+        <DetailModal
+          metric={selectedMetric}
+          rows={rows}
+          onClose={() => setSelectedMetric(null)}
+          onEdit={startEditing}
+        />
+      )}
     </main>
   )
 }
