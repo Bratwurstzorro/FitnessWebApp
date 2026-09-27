@@ -2,6 +2,10 @@
 
 BodyTrack is a small React + Supabase web app for tracking body measurements over time.
 
+The separate training area is available at `/FitnessWebApp/training/`. Its source
+is in `training/`, shares this project's Supabase Auth and database, and is built
+alongside the body measurement app in the same Pages deployment.
+
 ## Features
 
 - Email/password registration and login
