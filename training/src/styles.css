@@ -11,3 +11,6 @@
 .finish-dialog{width:min(100%,460px);max-height:90vh;overflow:auto;box-shadow:0 14px 50px #071d1c66}
 .finish-dialog p{line-height:1.5;color:#576d66}
 .finish-dialog button{width:100%}
+.footer-actions{flex-wrap:wrap}
+.footer-actions>button{flex:1 1 160px}
+.cancel-button{border-color:#e4a9a0;color:#a3372b}

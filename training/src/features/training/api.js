@@ -27,6 +27,14 @@ export async function remove(table, id, userId) {
   unwrap(await supabase.from(table).delete().eq('id',id).eq('user_id',userId))
 }
 
+export async function cancelWorkout(sessionId,userId) {
+  const deleted=unwrap(await supabase.from('training_sessions')
+    .delete().eq('id',sessionId).eq('user_id',userId).is('finished_at',null)
+    .select('id').maybeSingle())
+  if(!deleted) throw new Error('Das Training ist bereits abgeschlossen oder nicht mehr vorhanden.')
+  // training_session_sets are removed by their ON DELETE CASCADE foreign key.
+}
+
 export async function removeWorkoutExercise(sessionId, exercisePosition, userId) {
   unwrap(await supabase.from('training_session_sets').delete().eq('session_id',sessionId).eq('exercise_position',exercisePosition).eq('user_id',userId))
 }

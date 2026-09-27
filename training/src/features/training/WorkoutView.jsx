@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { addWorkoutExercise, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update } from './api'
+import { addWorkoutExercise, cancelWorkout, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update } from './api'
 import { previousForSet, recommendation } from './progression'
 import { RestTimer } from './RestTimer'
 import { NumericInput } from './NumericInput'
@@ -63,6 +63,10 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       : update('training_sessions',session.id,user.id,{finished_at:new Date().toISOString()}))
     if(success){setFinishing(false);setTimer(null);onClose(true)}
   }
+  async function cancel() {
+    if(!window.confirm('Dieses begonnene Training samt allen erfassten Sätzen endgültig löschen? Der Trainingsplan bleibt erhalten.'))return
+    if(await perform(()=>cancelWorkout(session.id,user.id))){setTimer(null);onClose(false)}
+  }
   return <>
     <p className="muted">{session.plan_name} · begonnen {new Date(session.started_at).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})}</p>
     {timer&&<RestTimer key={timer.key} initialSeconds={timer.seconds} onSkip={()=>setTimer(null)}/>}
@@ -79,7 +83,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
     })}</div>
     {adding?<AddExercise exercises={available} busy={busy} onAdd={addExercise} onCancel={()=>setAdding(false)}/>:<button className="add workout-add" onClick={()=>setAdding(true)}>+ Übung hinzufügen</button>}
     <p className="evidence">Die Empfehlung ist eine Orientierung. Die ACSM-Leitlinie beschreibt Laststeigerungen von 2–10 %, wenn 1–2 Wiederholungen mehr als geplant gelingen; der konkrete Sprung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></p>
-    <div className="footer-actions"><button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button><button className="primary" disabled={busy||!currentSets.length||!currentSets.every(s=>s.completed_at)} onClick={()=>setFinishing(true)}>Training abschließen</button></div>
+    <div className="footer-actions"><button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button><button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button><button className="primary" disabled={busy||!currentSets.length||!currentSets.every(s=>s.completed_at)} onClick={()=>setFinishing(true)}>Training abschließen</button></div>
     {finishing&&<div className="dialog-backdrop" role="presentation"><div className="card finish-dialog" role="dialog" aria-modal="true" aria-labelledby="finish-heading">
       <h2 id="finish-heading">Plan übernehmen?</h2><p>Soll dieses Training mit den heutigen Übungen, Sätzen, Gewichten und Wiederholungen deinen bisherigen Trainingstag im Plan ersetzen? Deine Historie wird in beiden Fällen gespeichert.</p>
       {error&&<p className="notice error" role="alert">{error}</p>}
