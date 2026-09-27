@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { insert, loadTraining, remove, startSession, update } from './api'
 import { WorkoutView } from './WorkoutView'
+import { NumericInput } from './NumericInput'
+import { parseNumeric } from './numeric'
 
 const empty = {plans:[],days:[],exercises:[],targets:[],sessions:[],sets:[]}
 const date = (stamp) => new Date(stamp).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})
-const number = (value) => Number(value)
+const number = (value) => parseNumeric(value)
 
 function Auth() {
   const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[mode,setMode]=useState('login')
@@ -22,16 +24,16 @@ function Auth() {
     {message && <p role="alert" className="notice">{message}</p>}<button className="link" onClick={()=>{setMode(mode==='login'?'register':'login');setMessage('')}}>{mode==='login'?'Noch kein Konto? Registrieren':'Zur Anmeldung'}</button></main>
 }
 
-function PromptForm({label,value='',onSave,onCancel,numeric=false}) {
+function PromptForm({label,value='',onSave,onCancel}) {
   const [text,setText]=useState(String(value))
-  return <form className="inline-form" onSubmit={e=>{e.preventDefault();onSave(text.trim())}}><input aria-label={label} autoFocus required type={numeric?'number':'text'} maxLength={numeric?undefined:100} value={text} onChange={e=>setText(e.target.value)}/><button className="primary">Speichern</button><button type="button" onClick={onCancel}>Abbrechen</button></form>
+  return <form className="inline-form" onSubmit={e=>{e.preventDefault();onSave(text.trim())}}><input aria-label={label} autoFocus required type="text" maxLength={100} value={text} onChange={e=>setText(e.target.value)}/><button className="primary">Speichern</button><button type="button" onClick={onCancel}>Abbrechen</button></form>
 }
 
 function SetEditor({initial,onSave,onCancel}) {
   const [weight,setWeight]=useState(String(initial?.weight_kg??0)),[reps,setReps]=useState(String(initial?.reps??10))
   return <form className="inline-form" onSubmit={e=>{e.preventDefault();onSave({weight_kg:number(weight),reps:number(reps)})}}>
-    <label>kg<input type="number" inputMode="decimal" min="0" max="9999" step="0.25" required value={weight} onChange={e=>setWeight(e.target.value)}/></label>
-    <label>Wdh.<input type="number" inputMode="numeric" min="1" max="1000" step="1" required value={reps} onChange={e=>setReps(e.target.value)}/></label>
+    <label>kg<NumericInput kind="weight" max="9999" value={weight} onChange={setWeight}/></label>
+    <label>Wdh.<NumericInput kind="reps" max="1000" value={reps} onChange={setReps}/></label>
     <button className="primary">Speichern</button><button type="button" onClick={onCancel}>Abbrechen</button></form>
 }
 

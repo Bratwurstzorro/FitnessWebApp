@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { addWorkoutExercise, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update } from './api'
 import { previousForSet, recommendation } from './progression'
 import { RestTimer } from './RestTimer'
+import { NumericInput } from './NumericInput'
+import { parseNumeric } from './numeric'
 
 function WorkoutSet({value,index,previous,busy,onDone,onRemove}) {
   const advice = recommendation(previous,value.target_reps,value.target_weight_kg)
@@ -16,9 +18,9 @@ function WorkoutSet({value,index,previous,busy,onDone,onRemove}) {
     <div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><button disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>Entfernen</button></div>
     <small>Ziel {value.target_weight_kg} kg × {value.target_reps} · zuletzt {previous?`${previous.actual_weight_kg} kg × ${previous.actual_reps}`:'kein früherer Satz'}</small>
     <div className="advice"><strong>Empfehlung: {advice.label}</strong><small>{advice.detail}</small></div>
-    <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:Number(weight),actual_reps:Number(reps)})}} className="set-controls">
-      <label>kg<input aria-label={`Satz ${index+1} Gewicht`} type="number" inputMode="decimal" min="0" max="9999" step="0.25" required value={weight} onChange={e=>setWeight(e.target.value)}/></label>
-      <label>Wdh.<input aria-label={`Satz ${index+1} Wiederholungen`} type="number" inputMode="numeric" min="1" max="1000" step="1" required value={reps} onChange={e=>setReps(e.target.value)}/></label>
+    <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:parseNumeric(weight),actual_reps:parseNumeric(reps)})}} className="set-controls">
+      <label>kg<NumericInput aria-label={`Satz ${index+1} Gewicht`} kind="weight" max="9999" value={weight} onChange={setWeight}/></label>
+      <label>Wdh.<NumericInput aria-label={`Satz ${index+1} Wiederholungen`} kind="reps" max="1000" value={reps} onChange={setReps}/></label>
       <button className="primary" disabled={busy}>{value.completed_at?'Korrigieren':'Satz fertig'}</button>
     </form>
   </div>
