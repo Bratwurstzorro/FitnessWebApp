@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { insert, loadTraining, remove, startSession, update } from './api'
-import { RestTimer } from './RestTimer'
+import { WorkoutView } from './WorkoutView'
 
 const empty = {plans:[],days:[],exercises:[],targets:[],sessions:[],sets:[]}
 const date = (stamp) => new Date(stamp).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})
@@ -41,7 +41,7 @@ function Training({user}) {
   const [activeSession,setActiveSession]=useState(null)
   const refresh=useCallback(async()=>{setData(await loadTraining(user.id))},[user.id])
   useEffect(()=>{let live=true;loadTraining(user.id).then(d=>{if(live){setData(d);setLoading(false)}}).catch(e=>{if(live){setError(e.message);setLoading(false)}});return()=>{live=false}},[user.id])
-  async function perform(task) {setBusy(true);setError('');try{await task();await refresh()}catch(e){setError(e.message||'Speichern fehlgeschlagen.')}finally{setBusy(false)}}
+  async function perform(task) {setBusy(true);setError('');try{await task();await refresh();return true}catch(e){setError(e.message||'Speichern fehlgeschlagen.');return false}finally{setBusy(false)}}
   const plan=data.plans.find(p=>p.id===planId),day=data.days.find(d=>d.id===dayId)
   const days=data.days.filter(d=>d.plan_id===planId),exercises=data.exercises.filter(e=>e.day_id===dayId)
   const session=activeSession && data.sessions.find(s=>s.id===activeSession)
@@ -75,21 +75,11 @@ function Training({user}) {
     </>}
     {page==='workout'&&<><div className="section-title"><div><span className="eyebrow">LIVE</span><h2>{session?session.day_name:'Training starten'}</h2></div></div>
       {!session&&<div className="stack">{data.plans.flatMap(p=>data.days.filter(d=>d.plan_id===p.id).map(d=><article className="card row" key={d.id}><div><strong>{d.name}</strong><small className="block">{p.name}</small></div><button className="primary" disabled={busy} onClick={()=>{setPlanId(p.id);beginFor(p,d)}}>Starten</button></article>))}{data.sessions.filter(s=>!s.finished_at).map(s=><article className="card row" key={s.id}><div><strong>{s.day_name}</strong><small className="block">Begonnen {date(s.started_at)}</small></div><button onClick={()=>{setActiveSession(s.id);setTimer(null)}}>Fortsetzen</button></article>)}</div>}
-      {session&&<><p className="muted">{session.plan_name} · begonnen {date(session.started_at)}</p>{timer&&<RestTimer key={timer.key} initialSeconds={timer.seconds} onSkip={()=>setTimer(null)}/>}
-        <div className="stack">{[...new Set(currentSets.map(s=>s.exercise_position))].map(pos=>{const group=currentSets.filter(s=>s.exercise_position===pos);return <article className="card" key={pos}><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small><div className="stack sets">{group.map((s,i)=>{const previous=data.sets.filter(old=>old.exercise_id===s.exercise_id && old.set_position===s.set_position && old.completed_at && old.session_id!==session.id && data.sessions.some(hist=>hist.id===old.session_id && hist.started_at<session.started_at)).sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at))[0];return <WorkoutSet key={s.id} value={s} index={i} previous={previous} busy={busy} onDone={values=>perform(async()=>{await update('training_session_sets',s.id,user.id,{...values,completed_at:new Date().toISOString()});setTimer({key:s.id+Date.now(),seconds:s.rest_seconds})})}/>})}</div></article>})}</div>
-        <div className="footer-actions"><button disabled={busy} onClick={()=>{setActiveSession(null);setTimer(null)}}>Später fortsetzen</button><button className="primary" disabled={busy||!currentSets.every(s=>s.completed_at)} onClick={()=>perform(async()=>{await update('training_sessions',session.id,user.id,{finished_at:new Date().toISOString()});setActiveSession(null);setTimer(null);setPage('history')})}>Training abschließen</button></div>
-      </>}
+      {session&&<WorkoutView user={user} data={data} session={session} currentSets={currentSets} timer={timer} setTimer={setTimer} busy={busy} error={error} perform={perform} onClose={finished=>{setActiveSession(null);if(finished)setPage('history')}}/>}
     </>}
     {page==='history'&&<><div className="section-title"><div><span className="eyebrow">FORTSCHRITT</span><h2>Trainingshistorie</h2></div></div>{history.length===0?<div className="card muted">Noch keine abgeschlossenen Trainings.</div>:<div className="stack">{history.map(s=><details className="card" key={s.id}><summary><strong>{s.day_name}</strong><span>{date(s.finished_at)} · {s.plan_name}</span></summary><div className="history-sets">{data.sets.filter(t=>t.session_id===s.id).map(t=><div className="set-row" key={t.id}><span>{t.exercise_name} · Satz {t.set_position+1}</span><strong>{t.completed_at?`${t.actual_weight_kg} kg × ${t.actual_reps}`:'Nicht absolviert'}</strong></div>)}</div></details>)}</div>}</>}
   </div>
   async function beginFor(chosenPlan,chosenDay) {await perform(async()=>{const source=data.exercises.filter(e=>e.day_id===chosenDay.id).sort((a,b)=>a.position-b.position);const created=await startSession(user.id,chosenPlan,chosenDay,source,data.targets);setActiveSession(created.id);setTimer(null);setPage('workout')})}
-}
-
-function WorkoutSet({value,index,previous,busy,onDone}) {
-  const [weight,setWeight]=useState(String(value.actual_weight_kg??value.target_weight_kg))
-  const [reps,setReps]=useState(String(value.actual_reps??value.target_reps))
-  useEffect(()=>{setWeight(String(value.actual_weight_kg??value.target_weight_kg));setReps(String(value.actual_reps??value.target_reps))},[value.id,value.actual_weight_kg,value.actual_reps,value.target_weight_kg,value.target_reps])
-  return <div className={`workout-set ${value.completed_at?'complete':''}`}><div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><small>Ziel {value.target_weight_kg} kg × {value.target_reps} · zuletzt {previous?`${previous.actual_weight_kg} kg × ${previous.actual_reps}`:'–'}</small></div><form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:number(weight),actual_reps:number(reps)})}} className="set-controls"><label>kg<input aria-label={`Satz ${index+1} Gewicht`} type="number" inputMode="decimal" min="0" max="9999" step="0.25" required value={weight} onChange={e=>setWeight(e.target.value)}/></label><label>Wdh.<input aria-label={`Satz ${index+1} Wiederholungen`} type="number" inputMode="numeric" min="0" max="1000" step="1" required value={reps} onChange={e=>setReps(e.target.value)}/></label><button className="primary" disabled={busy}>{value.completed_at?'Korrigieren':'Satz fertig'}</button></form></div>
 }
 
 export default function TrainingApp() {

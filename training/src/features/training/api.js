@@ -27,8 +27,28 @@ export async function remove(table, id, userId) {
   unwrap(await supabase.from(table).delete().eq('id',id).eq('user_id',userId))
 }
 
+export async function removeWorkoutExercise(sessionId, exercisePosition, userId) {
+  unwrap(await supabase.from('training_session_sets').delete().eq('session_id',sessionId).eq('exercise_position',exercisePosition).eq('user_id',userId))
+}
+
+export async function addWorkoutExercise(userId, sessionId, exercise, targets, position) {
+  const rows = (targets.length ? targets : [{weight_kg:0,reps:10}]).map((target,index)=>({
+    user_id:userId,session_id:sessionId,exercise_id:exercise.id,exercise_name:exercise.name,
+    exercise_position:position,set_position:index,rest_seconds:exercise.rest_seconds,
+    target_weight_kg:target.weight_kg,target_reps:target.reps,
+  }))
+  unwrap(await supabase.from('training_session_sets').insert(rows))
+}
+
+export async function finishAndApplyToPlan(sessionId) {
+  unwrap(await supabase.rpc('finish_training_and_update_plan',{p_session_id:sessionId}))
+}
+
 export async function startSession(userId, plan, day, exercises, targets) {
-  const session = await insert('training_sessions',{user_id:userId,plan_name:plan.name,day_name:day.name})
+  const session = await insert('training_sessions',{
+    user_id:userId,plan_name:plan.name,day_name:day.name,
+    source_plan_id:plan.id,source_day_id:day.id,
+  })
   try {
     const rows = exercises.flatMap((exercise,exercisePosition) => targets.filter(t=>t.exercise_id===exercise.id).map((target,setPosition)=>({
       user_id:userId, session_id:session.id, exercise_id:exercise.id, exercise_name:exercise.name,
