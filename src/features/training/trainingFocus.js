@@ -20,3 +20,12 @@ export function warmupSuggestion(recent,firstSet) {
   const reference=Number(previous?.actual_weight_kg??firstSet.target_weight_kg)
   return {weight:Math.round(reference*.4*10)/10,reps:6,reference,fromHistory:!!previous}
 }
+
+// Advance only after a newly confirmed set completes its whole exercise.
+// Corrections and manual navigation to completed exercises stay on that page.
+export function nextExerciseAfterSet(groups,set) {
+  const index=groups.findIndex(group=>group.some(row=>row.id===set.id))
+  if(index<0||set.completed_at||groups[index].some(row=>row.id!==set.id&&!row.completed_at))return null
+  const next=[...groups.slice(index+1),...groups.slice(0,index)].find(group=>group.some(row=>!row.completed_at))
+  return next?.[0].exercise_id??null
+}

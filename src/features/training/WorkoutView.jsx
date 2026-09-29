@@ -96,7 +96,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       </article>
     })}</div>}
     {adding?<ExercisePicker catalog={data.catalog} excludeIds={currentSets.map(set=>set.catalog_exercise_id)} busy={busy} onChoose={addExercise} onCancel={()=>setAdding(false)}/>:<button className="add workout-add" onClick={()=>setAdding(true)}>+ Übung hinzufügen</button>}
-    {!historyMode&&<><p className="evidence">Die Empfehlung ist eine Orientierung. Die ACSM-Leitlinie beschreibt Laststeigerungen von 2–10 %, wenn 1–2 Wiederholungen mehr als geplant gelingen; der konkrete Sprung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></p>
+    {!historyMode&&<>
     <div className="footer-actions"><button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button><button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button><button className="primary" disabled={busy||!currentSets.length||!currentSets.every(s=>s.completed_at)} onClick={()=>setFinishing(true)}>Training abschließen</button></div>
     </>}
     {historyMode&&<div className="footer-actions"><button className="primary" disabled={busy} onClick={()=>{if(currentSets.some(s=>!s.completed_at||drafts[s.id])&&!window.confirm('Es gibt noch nicht gespeicherte Änderungen oder Sätze. Nur gespeicherte Werte werden im Fortschritt berücksichtigt. Bearbeitung trotzdem beenden?'))return;onClose(false)}}>Bearbeitung beenden</button></div>}
