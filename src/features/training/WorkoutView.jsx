@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addWorkoutExercise, cancelWorkout, ensureCatalogExercise, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update, saveSessionOrder } from './api'
-import { previousForSet, recommendation } from './progression'
+import { previousForSet, recommendation, historicalSetValues } from './progression'
 import { RestTimer } from './RestTimer'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
@@ -54,15 +54,15 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
 
   async function addSet(group) {
     const last=group[group.length-1]
-    const previous=previousForSet(data.sets,data.sessions,session,group[0])
-    const values=workoutValues(group,drafts,recommendation(previous,group[0].target_reps,group[0].target_weight_kg)).at(-1)
+    const values=workoutValues(group,drafts,set=>historicalSetValues(data,session,set)).at(-1)
     await perform(async()=>{
       if(!values.weight||!values.reps)throw new Error('Bitte zuerst Gewicht und Wiederholungen des vorherigen Satzes ausfüllen.')
-      await insert('training_session_sets',{
+      const created=await insert('training_session_sets',{
         user_id:user.id,session_id:session.id,exercise_id:last.exercise_id,catalog_exercise_id:last.catalog_exercise_id,exercise_name:last.exercise_name,
         exercise_position:last.exercise_position,set_position:Math.max(...group.map(s=>s.set_position))+1,
         rest_seconds:last.rest_seconds,target_weight_kg:parseNumeric(values.weight),target_reps:parseNumeric(values.reps),
       })
+      setDrafts(current=>({...current,[created.id]:values}))
     })
   }
   async function addExercise(choice) {
@@ -123,8 +123,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       onExerciseChange={setSelectedExercise} onOpenMenu={id=>{setSelectedExercise(id);setExerciseMenu(true)}}/>}
     {historyMode&&<div className="stack">{groups.map((pos,groupIndex)=>{
       const group=currentSets.filter(s=>s.exercise_position===pos).sort((a,b)=>a.set_position-b.set_position)
-      const firstPrevious=previousForSet(data.sets,data.sessions,session,group[0])
-      const defaults=workoutValues(group,drafts,recommendation(firstPrevious,group[0].target_reps,group[0].target_weight_kg))
+      const defaults=workoutValues(group,drafts,set=>historicalSetValues(data,session,set))
       return <article className="card" key={group[0].exercise_id}>
         <div className="row"><div><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small></div><div className="actions"><OrderButtons index={groupIndex} count={groups.length} busy={busy} label={group[0].exercise_name} onMove={direction=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,groupIndex,direction)))}/><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${group[0].exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,pos,user.id))}}>Übung entfernen</button></div></div>
         <div className="stack sets">{group.map((set,index)=><WorkoutSet key={set.id} value={set} index={index} values={defaults[index]} onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))}

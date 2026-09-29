@@ -10,13 +10,11 @@ test('each added plan set copies the immediately preceding set',()=>{
   assert.deepEqual(nextPlanSet(sets,'other'),{position:0,weight_kg:0,reps:10})
 })
 
-test('live third set follows the edited second set, including unsaved input',()=>{
-  const group=[{id:'one'},{id:'two'},{id:'three'}]
-  const values=workoutValues(group,{two:{weight:'42',reps:'10'}},{weight:40,reps:10})
-  assert.deepEqual(values,[
-    {weight:'40',reps:'10'},
-    {weight:'42',reps:'10'},
-    {weight:'42',reps:'10'},
-  ])
-  assert.equal(workoutValues([{id:'one'},{id:'two',completed_at:'today',actual_weight_kg:45,actual_reps:8},{id:'three'}],{}, {weight:40,reps:10})[2].weight,'45')
+test('each set retains its own defaults and edits never overwrite another set',()=>{
+ const group=[{id:'one',weight:40,reps:13},{id:'two',weight:42,reps:14},{id:'three',weight:45,reps:15}]
+ assert.deepEqual(workoutValues(group,{},set=>set),[{weight:'40',reps:'13'},{weight:'42',reps:'14'},{weight:'45',reps:'15'}])
+ assert.deepEqual(workoutValues(group,{two:{weight:'43',reps:'16'}},set=>set),[{weight:'40',reps:'13'},{weight:'43',reps:'16'},{weight:'45',reps:'15'}])
+ // Newly added sets explicitly receive the preceding draft as their own values.
+ const lastDraft={weight:'43',reps:'16'}
+ assert.deepEqual(workoutValues([{id:'new'}],{new:lastDraft},()=>({weight:0,reps:10})),[lastDraft])
 })

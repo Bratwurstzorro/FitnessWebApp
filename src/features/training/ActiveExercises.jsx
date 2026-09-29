@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
 import { workoutValues } from './setDefaults'
-import { previousForSet, recommendation } from './progression'
+import { previousForSet, recommendation, historicalSetValues } from './progression'
 import { exerciseGroups, firstOpenExercise, recentExerciseSessions, warmupSuggestion, nextExerciseAfterSet } from './trainingFocus'
 
 const kg=value=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(value)
@@ -31,10 +31,10 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
   if(!group)return <div className="card"><div className="row exercise-heading"><h2>Übungen</h2><button type="button" className="workout-menu-button" disabled={busy} aria-label="Übungsaktionen öffnen" aria-haspopup="dialog" onClick={()=>onOpenMenu(null)}>⋯</button></div><p className="muted">Füge eine Übung hinzu, um das Training fortzusetzen.</p></div>
   const first=group[0],activeIndex=group.findIndex(s=>!s.completed_at),activeSet=group[activeIndex]
   const recent=recentExerciseSessions(data,session,first),warmup=warmupSuggestion(recent,first)
-  const previous=previousForSet(data.sets,data.sessions,session,first)
-  const defaults=workoutValues(group,drafts,recommendation(previous,first.target_reps,first.target_weight_kg))
+  const defaults=workoutValues(group,drafts,set=>historicalSetValues(data,session,set))
   const prior=activeIndex>0?group[activeIndex-1]:null
-  const baseline=prior?.completed_at?prior:activeSet?previousForSet(data.sets,data.sessions,session,activeSet):null
+  const historical=activeSet?previousForSet(data.sets,data.sessions,session,activeSet):null
+  const baseline=historical??(prior?.completed_at?prior:null)
   const advice=activeSet?recommendation(baseline,activeSet.target_reps,activeSet.target_weight_kg):null
   const next=groups.find(g=>g!==group&&g.some(s=>!s.completed_at))
   return <>
@@ -53,7 +53,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
       <div className="focused-sets">{group.map((set,index)=><ActiveSet key={set.id} set={set} index={index} values={defaults[index]} active={index===activeIndex} busy={busy}
         onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))} onSave={async values=>{const nextId=nextExerciseAfterSet(groups,set);if(await onSaveSet(set,values)){if(nextId)setSelected(nextId)}}} onRemove={()=>onRemoveSet(set)}/>)}</div>
       <button className="link" disabled={busy} onClick={()=>onAddSet(group)}>+ Satz hinzufügen</button>
-      {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong></summary><small>{advice.detail}</small><small>{prior?.completed_at?`Basis: heute Satz #${activeIndex} · ${prior.actual_weight_kg} kg × ${prior.actual_reps}`:baseline?`Zuletzt: ${baseline.actual_weight_kg} kg × ${baseline.actual_reps}`:'Basis: dein Trainingsplan'}</small><small>Laststeigerungen von 2–10 % bei 1–2 Wiederholungen über dem Ziel sind eine ACSM-Orientierung; die konkrete Empfehlung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
+      {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong></summary><small>{advice.detail}</small><small>{historical?`Zuletzt Satz #${activeIndex+1}: ${historical.actual_weight_kg} kg × ${historical.actual_reps}`:prior?.completed_at?`Basis ohne Historie: heute Satz #${activeIndex} · ${prior.actual_weight_kg} kg × ${prior.actual_reps}`:'Basis: dein Trainingsplan'}</small><small>Laststeigerungen von 2–10 % bei 1–2 Wiederholungen über dem Ziel sind eine ACSM-Orientierung; die konkrete Empfehlung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
       <aside className="recent-training"><strong>Die letzten zwei Trainings</strong>{recent.length?recent.map(previous=><div key={previous.id}><p>{date(previous.finished_at)} · {previous.plan_name} · {previous.day_name}</p>{previous.sets.map((set,index)=><div className="recent-set" key={set.id}><span>Satz #{index+1}</span><span>{set.actual_weight_kg} kg</span><span>{set.actual_reps} Wdh.</span></div>)}</div>):<p>Noch keine abgeschlossenen Trainings für diese Übung.</p>}</aside>
     </article>
   </>

@@ -8,14 +8,11 @@ export function nextPlanSet(targets,exerciseId) {
   }
 }
 
-export function workoutValues(group,drafts,firstSuggestion) {
-  const values=[]
-  for(const set of group) {
-    const previous=values.at(-1)
-    const source=drafts[set.id] ?? (set.completed_at
-      ? {weight:set.actual_weight_kg,reps:set.actual_reps}
-      : previous ?? firstSuggestion)
-    values.push({weight:String(source.weight),reps:String(source.reps)})
-  }
-  return values
+export function workoutValues(group,drafts,suggestionForSet) {
+  return group.map(set=>{
+    const source=drafts[set.id]??(set.completed_at
+      ?{weight:set.actual_weight_kg,reps:set.actual_reps}
+      :typeof suggestionForSet==='function'?suggestionForSet(set):suggestionForSet)
+    return {weight:String(source.weight),reps:String(source.reps)}
+  })
 }

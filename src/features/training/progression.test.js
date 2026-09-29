@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { previousForSet, recommendation } from './progression.js'
+import { previousForSet, recommendation, historicalSetValues } from './progression.js'
 
 test('uses the latest completed value for the same set, not the saved plan value',()=>{
-  const sessions=[{id:'old',started_at:'2026-09-01T10:00:00Z'},{id:'recent',started_at:'2026-09-10T10:00:00Z'}]
+  const sessions=[{id:'old',started_at:'2026-09-01T10:00:00Z',finished_at:'2026-09-01T11:00:00Z'},{id:'recent',started_at:'2026-09-10T10:00:00Z',finished_at:'2026-09-10T11:00:00Z'}]
   const current={id:'current',started_at:'2026-09-20T10:00:00Z'}
   const set={exercise_id:'press',exercise_name:'Bankdrücken',set_position:1}
   const sets=[
@@ -24,7 +24,7 @@ test('recommends a modest increase only after exceeding the target',()=>{
 })
 
 test('uses the shared exercise ID across plans and never mixes distinct catalog exercises',()=>{
-  const sessions=[{id:'older'},{id:'newer'}]
+  const sessions=[{id:'older',finished_at:'2026-09-01T11:00:00Z'},{id:'newer',finished_at:'2026-09-10T11:00:00Z'}]
   const current={id:'today',started_at:'2026-09-20T10:00:00Z'}
   const set={exercise_id:'plan-b-instance',catalog_exercise_id:'shared-press',exercise_name:'Bankdrücken',set_position:0}
   const sets=[
@@ -39,4 +39,17 @@ test('gives an explicit repetition goal while retaining achieved values as input
  assert.equal(result.label,'20 kg halten, 11 Wiederholungen versuchen')
  assert.equal(result.reps,10)
  assert.equal(recommendation(null,10,20).label,'20 kg, 10 Wiederholungen versuchen')
+})
+
+test('last workout values remain distinct for all three sets and yield individual advice',()=>{
+ const sessions=[{id:'last',finished_at:'2026-09-29T11:00:00Z'}],current={id:'now',started_at:'2026-09-30T10:00:00Z'}
+ const sets=[13,14,15].map((reps,index)=>({session_id:'last',catalog_exercise_id:'press',set_position:index,completed_at:`2026-09-29T10:0${index}:00Z`,actual_weight_kg:20+index,actual_reps:reps,target_reps:reps}))
+ const targets=sets.map((row,index)=>({id:String(index),catalog_exercise_id:'press',set_position:index,target_weight_kg:5,target_reps:10}))
+ assert.deepEqual(targets.map(set=>historicalSetValues({sets,sessions},current,set)),[{weight:20,reps:13},{weight:21,reps:14},{weight:22,reps:15}])
+ assert.deepEqual(targets.map(set=>recommendation(previousForSet(sets,sessions,current,set),set.target_reps,set.target_weight_kg).label),['20 kg halten, 14 Wiederholungen versuchen','21 kg halten, 15 Wiederholungen versuchen','22 kg halten, 16 Wiederholungen versuchen'])
+})
+test('weight increase is reachable even when the next plan adopts the achieved repetitions',()=>{
+ const previous={actual_weight_kg:20,actual_reps:15,target_reps:13}
+ assert.equal(recommendation(previous,15,20).label,'20,4–21 kg mit 13 Wiederholungen prüfen')
+ assert.match(recommendation({...previous,actual_reps:14},14,20).label,/halten, 15 Wiederholungen/)
 })
