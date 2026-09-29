@@ -38,14 +38,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Build Training
-        run: |
-          cd training
-          npm ci
-          npm run build
-          mkdir -p ../dist/training
-          cp -R dist/. ../dist/training/
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

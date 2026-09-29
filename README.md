@@ -1,47 +1,18 @@
 # BodyTrack
 
-BodyTrack is a small React + Supabase web app for tracking body measurements over time.
+Eine gemeinsame React/Vite-App für Trainingspläne, laufende Trainings, Historie, Übungsfortschritt und Körpermaße. Ein Supabase-Login und ein Supabase-Client bedienen beide Bereiche. Daten bleiben in ihren eigenen Tabellen mit benutzergebundenen RLS-Regeln.
 
-The separate training area is available at `/FitnessWebApp/training/`. Its source
-is in `training/`, shares this project's Supabase Auth and database, and is built
-alongside the body measurement app in the same Pages deployment.
-
-## Features
-
-- Email/password registration and login
-- Personal measurement history
-- Weight, height, left/right arm, left/right thigh, abdomen, waist, chest and left/right calf
-- Current value cards with mini trend charts
-- Click a metric to open a larger chart and dated history
-- Each user can only access their own measurements through Supabase Row Level Security
-
-## Local development
+## Start
 
 ```bash
-npm install
+npm ci
+npm test
 npm run dev
-```
-
-The frontend uses the Supabase project already configured in `src/lib/supabase.js`. Environment variables can override the defaults:
-
-```text
-VITE_SUPABASE_URL=
-VITE_SUPABASE_PUBLISHABLE_KEY=
-```
-
-## GitHub Pages
-
-The Vite base path is configured for `/FitnessWebApp/`.
-
-For a first deployment, run the production build locally:
-
-```bash
-npm install
 npm run build
 ```
 
-Then configure **Settings → Pages** in GitHub and choose the deployment source you want to use. If using GitHub Actions, the workflow should publish the generated `dist` directory.
+Die BodyTrack-App erscheint unter `/FitnessWebApp/`. Der bisherige Einstieg `/FitnessWebApp/training/` leitet auf den Trainingsbereich derselben App um. `src/features/training/` enthält Training und Fortschritt; `src/features/body/BodyMeasurements.jsx` enthält die Körpermaße mit Profil, Mini- und Detailgraphen. Die gemeinsame Anmeldung und Navigation liegen in `src/main.jsx`.
 
-The browser app does not require a private Supabase secret; the publishable key is intended for frontend use and database access is protected by Row Level Security.
+Vite verwendet den GitHub-Pages-Basispfad `/FitnessWebApp/`. Für andere Supabase-Umgebungen `VITE_SUPABASE_URL` und `VITE_SUPABASE_PUBLISHABLE_KEY` setzen; niemals einen geheimen Schlüssel in Vite-Variablen speichern. Für Capacitor kann später der gemeinsame Build `dist` als `webDir` genutzt werden.
 
-For Supabase Auth, configure the final GitHub Pages URL under **Authentication → URL Configuration** as the Site URL and add it as an allowed redirect URL.
+Die SQL-Migrationen für Trainingsdaten liegen unter `training/sql/`. Bestehende Messwert- und Trainingstabellen werden für die Zusammenführung nicht geändert.

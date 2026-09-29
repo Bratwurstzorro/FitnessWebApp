@@ -163,3 +163,17 @@ textarea { resize: vertical; padding: 12px 14px; line-height: 1.5; }
   .history-actions { width: 100%; }
   .history-actions > * { flex: 1; }
 }
+
+/* One navigation for both feature areas. */
+.unified-app{min-height:100vh;background:#f2f5f4}
+.unified-header{max-width:1100px;margin:auto;padding:22px 18px 12px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.unified-actions{display:flex;gap:8px}
+.unified-nav{max-width:1100px;margin:0 auto;padding:5px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;background:#e5eeeb;border-radius:15px}
+.unified-nav button{min-height:45px;min-width:0;padding:8px 4px;border:0;border-radius:11px;background:transparent;color:#577069;font-weight:750;font-size:.88rem}
+.unified-nav button.active{background:white;color:#126758;box-shadow:0 2px 6px #103b2d14}
+.unified-nav button:hover{background:#ffffffaa}
+.unified-nav button.active:hover{background:white}
+.nav-short{display:none}
+.unified-training[hidden]{display:none}
+@media(max-width:700px){.unified-header{padding:16px 12px 12px;align-items:flex-start;flex-wrap:wrap}.unified-actions{margin-left:auto}.unified-actions button{padding:0 10px;font-size:.78rem}.unified-nav{margin:0 12px}.unified-nav button{font-size:clamp(.64rem,2.55vw,.78rem);padding:6px 1px}.nav-long{display:none}.nav-short{display:inline}.brand span:last-child{font-size:11px}}
+@media(max-width:370px){.unified-header .brand{width:100%}.unified-actions{width:100%;justify-content:flex-end}}

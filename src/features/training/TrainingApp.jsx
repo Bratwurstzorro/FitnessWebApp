@@ -1,5 +1,4 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { supabase } from '../../lib/supabase'
 import { ensureCatalogExercise, insert, loadTraining, remove, startSession, update } from './api'
 import { WorkoutView } from './WorkoutView'
 import { ExercisePicker } from './ExercisePicker'
@@ -12,21 +11,6 @@ const ProgressView=lazy(()=>import('./ProgressView').then(module=>({default:modu
 const empty = {plans:[],days:[],exercises:[],targets:[],sessions:[],sets:[],catalog:[]}
 const date = (stamp) => new Date(stamp).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})
 const number = (value) => parseNumeric(value)
-
-function Auth() {
-  const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[mode,setMode]=useState('login')
-  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false)
-  async function submit(event) {
-    event.preventDefault();setBusy(true);setMessage('')
-    const {data,error} = mode==='login' ? await supabase.auth.signInWithPassword({email,password}) : await supabase.auth.signUp({email,password})
-    setBusy(false)
-    if(error) setMessage(error.message)
-    else if(mode==='register' && !data.session) setMessage('Bitte bestätige die Anmeldung per E-Mail.')
-  }
-  return <main className="auth card"><span className="eyebrow">BODYTRACK / TRAINING</span><h1>{mode==='login'?'Willkommen zurück':'Konto erstellen'}</h1><p>Mit demselben Supabase-Konto wie in BodyTrack anmelden.</p>
-    <form onSubmit={submit} className="stack"><label>E-Mail<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Passwort<input type="password" minLength="6" required autoComplete={mode==='login'?'current-password':'new-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label><button className="primary" disabled={busy}>{busy?'Bitte warten …':mode==='login'?'Anmelden':'Registrieren'}</button></form>
-    {message && <p role="alert" className="notice">{message}</p>}<button className="link" onClick={()=>{setMode(mode==='login'?'register':'login');setMessage('')}}>{mode==='login'?'Noch kein Konto? Registrieren':'Zur Anmeldung'}</button></main>
-}
 
 function PromptForm({label,value='',onSave,onCancel}) {
   const [text,setText]=useState(String(value))
@@ -41,9 +25,9 @@ function SetEditor({initial,onSave,onCancel}) {
     <button className="primary">Speichern</button><button type="button" onClick={onCancel}>Abbrechen</button></form>
 }
 
-function Training({user}) {
+export function TrainingArea({user,page,onNavigate}) {
   const [data,setData]=useState(empty),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('')
-  const [page,setPage]=useState('plans'),[planId,setPlanId]=useState(null),[dayId,setDayId]=useState(null),[editing,setEditing]=useState(null),[timer,setTimer]=useState(null)
+  const [planId,setPlanId]=useState(null),[dayId,setDayId]=useState(null),[editing,setEditing]=useState(null),[timer,setTimer]=useState(null)
   const [activeSession,setActiveSession]=useState(null)
   const refresh=useCallback(async()=>{setData(await loadTraining(user.id))},[user.id])
   useEffect(()=>{let live=true;loadTraining(user.id).then(d=>{if(live){setData(d);setLoading(false)}}).catch(e=>{if(live){setError(e.message);setLoading(false)}});return()=>{live=false}},[user.id])
@@ -57,14 +41,12 @@ function Training({user}) {
     await perform(async()=>{
       const source=data.exercises.filter(e=>e.day_id===dayChoice.id).sort((a,b)=>a.position-b.position)
       const created=await startSession(user.id,plan,dayChoice,source,data.targets)
-      setActiveSession(created.id);setTimer(null);setPage('workout')
+      setActiveSession(created.id);setTimer(null);onNavigate('workout')
     })
   }
   const editingAt=(kind,id)=>editing?.kind===kind && editing.id===id
-  if(loading) return <main className="shell">Training wird geladen …</main>
-  return <div className="shell">
-    <header className="top"><div><span className="eyebrow">BODYTRACK</span><h1>Training<span className="accent">.</span></h1></div><button onClick={()=>supabase.auth.signOut()}>Abmelden</button></header>
-    <nav aria-label="Training" className="tabs"><button className={page==='plans'?'selected':''} onClick={()=>setPage('plans')}>Pläne</button><button className={page==='workout'?'selected':''} onClick={()=>setPage('workout')}>Training</button><button className={page==='history'?'selected':''} onClick={()=>setPage('history')}>Historie</button><button className={page==='progress'?'selected':''} onClick={()=>setPage('progress')}>Fortschritt</button></nav>
+  if(loading) return <div className="training-surface"><main className="shell">Training wird geladen …</main></div>
+  return <div className="training-surface"><div className="shell">
     {error&&<div className="notice error" role="alert">{error}</div>}
     {page==='plans'&&<>
       <div className="section-title"><div><span className="eyebrow">DEINE ROUTINE</span><h2>{day?day.name:plan?plan.name:'Trainingspläne'}</h2></div>{day?<button onClick={()=>setDayId(null)}>← Tage</button>:plan?<button onClick={()=>setPlanId(null)}>← Pläne</button>:null}</div>
@@ -81,17 +63,10 @@ function Training({user}) {
     </>}
     {page==='workout'&&<><div className="section-title"><div><span className="eyebrow">LIVE</span><h2>{session?session.day_name:'Training starten'}</h2></div></div>
       {!session&&<div className="stack">{data.plans.flatMap(p=>data.days.filter(d=>d.plan_id===p.id).map(d=><article className="card row" key={d.id}><div><strong>{d.name}</strong><small className="block">{p.name}</small></div><button className="primary" disabled={busy} onClick={()=>{setPlanId(p.id);beginFor(p,d)}}>Starten</button></article>))}{data.sessions.filter(s=>!s.finished_at).map(s=><article className="card row" key={s.id}><div><strong>{s.day_name}</strong><small className="block">Begonnen {date(s.started_at)}</small></div><button onClick={()=>{setActiveSession(s.id);setTimer(null)}}>Fortsetzen</button></article>)}</div>}
-      {session&&<WorkoutView user={user} data={data} session={session} currentSets={currentSets} timer={timer} setTimer={setTimer} busy={busy} error={error} perform={perform} onClose={finished=>{setActiveSession(null);if(finished)setPage('history')}}/>}
+      {session&&<WorkoutView user={user} data={data} session={session} currentSets={currentSets} timer={timer} setTimer={setTimer} busy={busy} error={error} perform={perform} onClose={finished=>{setActiveSession(null);if(finished)onNavigate('history')}}/>}
     </>}
     {page==='history'&&<><div className="section-title"><div><span className="eyebrow">FORTSCHRITT</span><h2>Trainingshistorie</h2></div></div>{history.length===0?<div className="card muted">Noch keine abgeschlossenen Trainings.</div>:<div className="stack">{history.map(s=><details className="card" key={s.id}><summary><strong>{s.day_name}</strong><span>{date(s.finished_at)} · {s.plan_name}</span></summary><div className="history-sets">{data.sets.filter(t=>t.session_id===s.id).map(t=><div className="set-row" key={t.id}><span>{t.exercise_name} · Satz {t.set_position+1}</span><strong>{t.completed_at?`${t.actual_weight_kg} kg × ${t.actual_reps}`:'Nicht absolviert'}</strong></div>)}</div></details>)}</div>}</>}
     {page==='progress'&&<Suspense fallback={<div className="card muted">Fortschritt wird geladen …</div>}><ProgressView data={data}/></Suspense>}
-  </div>
-  async function beginFor(chosenPlan,chosenDay) {await perform(async()=>{const source=data.exercises.filter(e=>e.day_id===chosenDay.id).sort((a,b)=>a.position-b.position);const created=await startSession(user.id,chosenPlan,chosenDay,source,data.targets);setActiveSession(created.id);setTimer(null);setPage('workout')})}
-}
-
-export default function TrainingApp() {
-  const [session,setSession]=useState(null),[loading,setLoading]=useState(true)
-  useEffect(()=>{let live=true;supabase.auth.getSession().then(({data})=>{if(live){setSession(data.session);setLoading(false)}});const {data}=supabase.auth.onAuthStateChange((_event,next)=>{setSession(next);setLoading(false)});return()=>{live=false;data.subscription.unsubscribe()}},[])
-  if(loading)return <main className="shell">BodyTrack wird geladen …</main>
-  return session?<Training key={session.user.id} user={session.user}/>:<Auth/>
+  </div></div>
+  async function beginFor(chosenPlan,chosenDay) {await perform(async()=>{const source=data.exercises.filter(e=>e.day_id===chosenDay.id).sort((a,b)=>a.position-b.position);const created=await startSession(user.id,chosenPlan,chosenDay,source,data.targets);setActiveSession(created.id);setTimer(null);onNavigate('workout')})}
 }
