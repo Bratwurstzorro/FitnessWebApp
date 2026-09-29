@@ -71,3 +71,40 @@
 .training-surface .preview-exercises{list-style:none;padding:0;margin:20px 0 0}
 .training-surface .preview-exercises li{display:grid;gap:6px;padding:14px 0;border-top:1px solid #ecf0ed;overflow-wrap:anywhere}
 .training-surface .preview-exercises span{color:#60736c;font-size:.9rem}
+
+.training-surface .exercise-tabs{display:flex;gap:6px;background:#e5eeeb;border-radius:15px;padding:6px;margin:0 0 18px;overflow-x:auto}
+.training-surface .exercise-tabs button{flex:1 0 48px;position:relative;border:0;background:transparent;font-weight:800;padding:10px}
+.training-surface .exercise-tabs button.selected{background:white;color:#126758;box-shadow:0 2px 6px #103b2d14}
+.training-surface .exercise-tabs small{position:absolute;right:4px;top:2px;color:#16806b}
+.training-surface .focused-exercise h2{margin:0;overflow-wrap:anywhere}
+.training-surface .focused-target{font-size:.88rem;color:#60736c;margin:10px 0 18px;line-height:1.5}
+.training-surface .warmup-box{display:grid;gap:7px;background:#eef3fb;border:1px solid #d9e3f1;padding:13px;border-radius:12px;margin-bottom:18px}
+.training-surface .warmup-box small{font-size:.78rem;line-height:1.5}
+.training-surface .warmup-box summary{font-size:.76rem;color:#60736c}
+.training-surface .warmup-box details small{display:block;margin-top:8px}
+.training-surface .focused-sets{display:grid;gap:10px}
+.training-surface .focused-set{padding:11px;background:#f5f8f6;border:1px solid #e1e9e5;border-radius:12px}
+.training-surface .focused-set.complete{background:#ecf7f2}
+.training-surface .focused-set-row{display:grid;grid-template-columns:70px minmax(0,1fr) minmax(0,1fr) 44px 32px;align-items:end;gap:8px}
+.training-surface .focused-set-row>strong{font-size:.85rem;align-self:center}
+.training-surface .focused-set-row label{font-size:.75rem}
+.training-surface .focused-set-row input{padding:10px 8px}
+.training-surface .focused-set-row .set-check{padding:8px;background:#16806b;color:white;border-color:#16806b;font-weight:800;font-size:1.3rem}
+.training-surface .focused-set-row .set-delete{min-width:0;padding:7px 0;background:transparent;border:0;color:#6d807d}
+.training-surface .focused-set>small{display:block;font-size:.7rem;margin-top:7px;color:#6d807d}
+.training-surface .focused-set.locked input{background:#edf1ef;color:#6d807d}
+.training-surface .active-advice{margin:6px 0 20px}
+.training-surface .recent-training{font-size:.75rem;background:#f6f8f7;border:1px solid #e1e9e5;border-radius:12px;padding:13px;margin-top:18px;color:#60736c}
+.training-surface .recent-training>strong{font-size:.8rem}
+.training-surface .recent-training p{margin:10px 0 6px;line-height:1.5}
+.training-surface .recent-training>div+div{border-top:1px solid #e1e9e5;margin-top:10px}
+.training-surface .recent-set{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:4px 0}
+.training-surface .focused-exercise-actions{display:flex;justify-content:space-between;gap:10px;margin-top:18px}
+.training-surface .focused-exercise-actions>button{font-size:.8rem}
+.training-surface .focused-exercise .notice button{display:block;margin:10px auto 0}
+.training-surface .bottom-timer{margin-top:22px;text-align:center}
+.training-surface .bottom-timer .timer{position:static;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0}
+.training-surface .bottom-timer .timer strong{font-size:2.4rem}
+.training-surface .bottom-timer .actions{justify-content:center}
+.training-surface .timer-idle{font-size:.85rem}
+@media(max-width:420px){.training-surface .focused-set{padding:9px}.training-surface .focused-set-row{grid-template-columns:55px minmax(0,1fr) minmax(0,1fr) 40px 24px;gap:5px}.training-surface .focused-set-row>strong{font-size:.76rem}}
