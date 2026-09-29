@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ensureCatalogExercise, insert, loadTraining, remove, startSession, update } from './api'
 import { WorkoutView } from './WorkoutView'
@@ -6,6 +6,8 @@ import { ExercisePicker } from './ExercisePicker'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
 import { nextPlanSet } from './setDefaults'
+
+const ProgressView=lazy(()=>import('./ProgressView').then(module=>({default:module.ProgressView})))
 
 const empty = {plans:[],days:[],exercises:[],targets:[],sessions:[],sets:[],catalog:[]}
 const date = (stamp) => new Date(stamp).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})
@@ -62,7 +64,7 @@ function Training({user}) {
   if(loading) return <main className="shell">Training wird geladen …</main>
   return <div className="shell">
     <header className="top"><div><span className="eyebrow">BODYTRACK</span><h1>Training<span className="accent">.</span></h1></div><button onClick={()=>supabase.auth.signOut()}>Abmelden</button></header>
-    <nav aria-label="Training" className="tabs"><button className={page==='plans'?'selected':''} onClick={()=>setPage('plans')}>Pläne</button><button className={page==='workout'?'selected':''} onClick={()=>setPage('workout')}>Training</button><button className={page==='history'?'selected':''} onClick={()=>setPage('history')}>Historie</button></nav>
+    <nav aria-label="Training" className="tabs"><button className={page==='plans'?'selected':''} onClick={()=>setPage('plans')}>Pläne</button><button className={page==='workout'?'selected':''} onClick={()=>setPage('workout')}>Training</button><button className={page==='history'?'selected':''} onClick={()=>setPage('history')}>Historie</button><button className={page==='progress'?'selected':''} onClick={()=>setPage('progress')}>Fortschritt</button></nav>
     {error&&<div className="notice error" role="alert">{error}</div>}
     {page==='plans'&&<>
       <div className="section-title"><div><span className="eyebrow">DEINE ROUTINE</span><h2>{day?day.name:plan?plan.name:'Trainingspläne'}</h2></div>{day?<button onClick={()=>setDayId(null)}>← Tage</button>:plan?<button onClick={()=>setPlanId(null)}>← Pläne</button>:null}</div>
@@ -82,6 +84,7 @@ function Training({user}) {
       {session&&<WorkoutView user={user} data={data} session={session} currentSets={currentSets} timer={timer} setTimer={setTimer} busy={busy} error={error} perform={perform} onClose={finished=>{setActiveSession(null);if(finished)setPage('history')}}/>}
     </>}
     {page==='history'&&<><div className="section-title"><div><span className="eyebrow">FORTSCHRITT</span><h2>Trainingshistorie</h2></div></div>{history.length===0?<div className="card muted">Noch keine abgeschlossenen Trainings.</div>:<div className="stack">{history.map(s=><details className="card" key={s.id}><summary><strong>{s.day_name}</strong><span>{date(s.finished_at)} · {s.plan_name}</span></summary><div className="history-sets">{data.sets.filter(t=>t.session_id===s.id).map(t=><div className="set-row" key={t.id}><span>{t.exercise_name} · Satz {t.set_position+1}</span><strong>{t.completed_at?`${t.actual_weight_kg} kg × ${t.actual_reps}`:'Nicht absolviert'}</strong></div>)}</div></details>)}</div>}</>}
+    {page==='progress'&&<Suspense fallback={<div className="card muted">Fortschritt wird geladen …</div>}><ProgressView data={data}/></Suspense>}
   </div>
   async function beginFor(chosenPlan,chosenDay) {await perform(async()=>{const source=data.exercises.filter(e=>e.day_id===chosenDay.id).sort((a,b)=>a.position-b.position);const created=await startSession(user.id,chosenPlan,chosenDay,source,data.targets);setActiveSession(created.id);setTimer(null);setPage('workout')})}
 }

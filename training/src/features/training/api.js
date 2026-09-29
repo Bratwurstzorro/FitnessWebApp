@@ -5,17 +5,30 @@ function unwrap(result) {
   return result.data
 }
 
+// PostgREST caps a single result page. Keep older workouts available to the
+// history and progress charts even after a user has logged many sets.
+async function loadAll(table,userId,orderColumn,ascending=true) {
+  const rows=[]
+  const size=1000
+  for(let offset=0;;offset+=size) {
+    const page=unwrap(await supabase.from(table).select('*').eq('user_id',userId)
+      .order(orderColumn,{ascending}).order('id',{ascending}).range(offset,offset+size-1))
+    rows.push(...page)
+    if(page.length<size)return rows
+  }
+}
+
 export async function loadTraining(userId) {
   const [plans, days, exercises, targets, sessions, sets, catalog] = await Promise.all([
     supabase.from('training_plans').select('*').eq('user_id',userId).order('created_at'),
     supabase.from('training_days').select('*').eq('user_id',userId).order('position'),
     supabase.from('training_exercises').select('*').eq('user_id',userId).order('position'),
     supabase.from('training_targets').select('*').eq('user_id',userId).order('position'),
-    supabase.from('training_sessions').select('*').eq('user_id',userId).order('started_at',{ascending:false}),
-    supabase.from('training_session_sets').select('*').eq('user_id',userId).order('exercise_position').order('set_position'),
+    loadAll('training_sessions',userId,'started_at',false),
+    loadAll('training_session_sets',userId,'id'),
     supabase.from('training_exercise_catalog').select('id,name').order('name'),
   ])
-  return {plans:unwrap(plans),days:unwrap(days),exercises:unwrap(exercises),targets:unwrap(targets),sessions:unwrap(sessions),sets:unwrap(sets),catalog:unwrap(catalog)}
+  return {plans:unwrap(plans),days:unwrap(days),exercises:unwrap(exercises),targets:unwrap(targets),sessions,sets:sets.sort((a,b)=>a.exercise_position-b.exercise_position||a.set_position-b.set_position),catalog:unwrap(catalog)}
 }
 
 export async function ensureCatalogExercise(name,userId) {
