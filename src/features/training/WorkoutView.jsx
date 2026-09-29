@@ -1,30 +1,40 @@
 import { useState } from 'react'
-import { addWorkoutExercise, cancelWorkout, ensureCatalogExercise, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update } from './api'
+import { addWorkoutExercise, cancelWorkout, ensureCatalogExercise, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update, saveSessionOrder } from './api'
 import { previousForSet, recommendation } from './progression'
 import { RestTimer } from './RestTimer'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
 import { workoutValues } from './setDefaults'
 import { ExercisePicker } from './ExercisePicker'
+import { OrderButtons } from './OrderButtons'
+import { sessionOrder } from './order'
 
-function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove}) {
+function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,onMove,count,historyMode}) {
   const advice = recommendation(previous,value.target_reps,value.target_weight_kg)
   return <div className={`workout-set ${value.completed_at?'complete':''}`}>
-    <div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><button disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>Entfernen</button></div>
-    <small>Ziel {value.target_weight_kg} kg × {value.target_reps} · zuletzt {previous?`${previous.actual_weight_kg} kg × ${previous.actual_reps}`:'kein früherer Satz'}</small>
-    <div className="advice"><strong>Empfehlung: {advice.label}</strong><small>{advice.detail}</small></div>
+    <div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><div className="actions"><OrderButtons index={index} count={count} busy={busy} label={`Satz ${index+1}`} onMove={onMove}/><button disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>Entfernen</button></div></div>
+    {!historyMode&&<><small>Ziel {value.target_weight_kg} kg × {value.target_reps} · zuletzt {previous?`${previous.actual_weight_kg} kg × ${previous.actual_reps}`:'kein früherer Satz'}</small>
+    <div className="advice"><strong>Empfehlung: {advice.label}</strong><small>{advice.detail}</small></div></>}
     <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:parseNumeric(values.weight),actual_reps:parseNumeric(values.reps)})}} className="set-controls">
       <label>kg<NumericInput aria-label={`Satz ${index+1} Gewicht`} kind="weight" max="9999" value={values.weight} onChange={weight=>onDraft({...values,weight})}/></label>
       <label>Wdh.<NumericInput aria-label={`Satz ${index+1} Wiederholungen`} kind="reps" max="1000" value={values.reps} onChange={reps=>onDraft({...values,reps})}/></label>
-      <button className="primary" disabled={busy}>{value.completed_at?'Korrigieren':'Satz fertig'}</button>
+      <button className="primary" disabled={busy}>{historyMode?'Satz speichern':value.completed_at?'Korrigieren':'Satz fertig'}</button>
     </form>
   </div>
 }
 
-export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,error,perform,onClose}) {
+export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,error,perform,onClose,historyMode=false}) {
   const [adding,setAdding]=useState(false),[finishing,setFinishing]=useState(false)
   const [drafts,setDrafts]=useState({})
   const groups=[...new Set(currentSets.map(s=>s.exercise_position))].sort((a,b)=>a-b)
+
+  async function saveSet(set,values) {
+    const success=await perform(async()=>{
+      await update('training_session_sets',set.id,user.id,{...values,completed_at:historyMode?(set.completed_at??session.finished_at):new Date().toISOString()})
+      if(!historyMode)setTimer({key:set.id+Date.now(),seconds:set.rest_seconds})
+    })
+    if(success)setDrafts(current=>{const next={...current};delete next[set.id];return next})
+  }
 
   async function addSet(group) {
     const last=group[group.length-1]
@@ -64,24 +74,27 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
     if(await perform(()=>cancelWorkout(session.id,user.id))){setTimer(null);onClose(false)}
   }
   return <>
+    {historyMode&&<p className="notice">Änderungen werden einzeln gespeichert und aktualisieren deinen Fortschritt sowie die nächsten Trainingsempfehlungen. Dein Trainingsplan bleibt unverändert.</p>}
     <p className="muted">{session.plan_name} · begonnen {new Date(session.started_at).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})}</p>
-    {timer&&<RestTimer key={timer.key} initialSeconds={timer.seconds} onSkip={()=>setTimer(null)}/>}
-    <div className="stack">{groups.map(pos=>{
+    {!historyMode&&timer&&<RestTimer key={timer.key} initialSeconds={timer.seconds} onSkip={()=>setTimer(null)}/>}
+    <div className="stack">{groups.map((pos,groupIndex)=>{
       const group=currentSets.filter(s=>s.exercise_position===pos).sort((a,b)=>a.set_position-b.set_position)
       const firstPrevious=previousForSet(data.sets,data.sessions,session,group[0])
       const defaults=workoutValues(group,drafts,recommendation(firstPrevious,group[0].target_reps,group[0].target_weight_kg))
-      return <article className="card" key={pos}>
-        <div className="row"><div><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small></div><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${group[0].exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,pos,user.id))}}>Übung entfernen</button></div>
+      return <article className="card" key={group[0].exercise_id}>
+        <div className="row"><div><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small></div><div className="actions"><OrderButtons index={groupIndex} count={groups.length} busy={busy} label={group[0].exercise_name} onMove={direction=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,'exercise',groupIndex,direction)))}/><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${group[0].exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,pos,user.id))}}>Übung entfernen</button></div></div>
         <div className="stack sets">{group.map((set,index)=><WorkoutSet key={set.id} value={set} index={index} values={defaults[index]} onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))}
-          previous={previousForSet(data.sets,data.sessions,session,set)} busy={busy}
+          historyMode={historyMode} count={group.length} onMove={direction=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,'set',index,direction,pos)))} previous={previousForSet(data.sets,data.sessions,session,set)} busy={busy}
           onRemove={()=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
-          onDone={values=>perform(async()=>{await update('training_session_sets',set.id,user.id,{...values,completed_at:new Date().toISOString()});setTimer({key:set.id+Date.now(),seconds:set.rest_seconds})})}/>)}
+          onDone={values=>saveSet(set,values)}/>)}
         </div><button className="link" disabled={busy} onClick={()=>addSet(group)}>+ Satz hinzufügen</button>
       </article>
     })}</div>
     {adding?<ExercisePicker catalog={data.catalog} excludeIds={currentSets.map(set=>set.catalog_exercise_id)} busy={busy} onChoose={addExercise} onCancel={()=>setAdding(false)}/>:<button className="add workout-add" onClick={()=>setAdding(true)}>+ Übung hinzufügen</button>}
-    <p className="evidence">Die Empfehlung ist eine Orientierung. Die ACSM-Leitlinie beschreibt Laststeigerungen von 2–10 %, wenn 1–2 Wiederholungen mehr als geplant gelingen; der konkrete Sprung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></p>
+    {!historyMode&&<><p className="evidence">Die Empfehlung ist eine Orientierung. Die ACSM-Leitlinie beschreibt Laststeigerungen von 2–10 %, wenn 1–2 Wiederholungen mehr als geplant gelingen; der konkrete Sprung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></p>
     <div className="footer-actions"><button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button><button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button><button className="primary" disabled={busy||!currentSets.length||!currentSets.every(s=>s.completed_at)} onClick={()=>setFinishing(true)}>Training abschließen</button></div>
+    </>}
+    {historyMode&&<div className="footer-actions"><button className="primary" disabled={busy} onClick={()=>{if(currentSets.some(s=>!s.completed_at||drafts[s.id])&&!window.confirm('Es gibt noch nicht gespeicherte Änderungen oder Sätze. Nur gespeicherte Werte werden im Fortschritt berücksichtigt. Bearbeitung trotzdem beenden?'))return;onClose(false)}}>Bearbeitung beenden</button></div>}
     {finishing&&<div className="dialog-backdrop" role="presentation"><div className="card finish-dialog" role="dialog" aria-modal="true" aria-labelledby="finish-heading">
       <h2 id="finish-heading">Plan übernehmen?</h2><p>Soll dieses Training mit den heutigen Übungen, Sätzen, Gewichten und Wiederholungen deinen bisherigen Trainingstag im Plan ersetzen? Deine Historie wird in beiden Fällen gespeichert.</p>
       {error&&<p className="notice error" role="alert">{error}</p>}

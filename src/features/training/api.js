@@ -54,6 +54,16 @@ export async function remove(table, id, userId) {
   unwrap(await supabase.from(table).delete().eq('id',id).eq('user_id',userId))
 }
 
+export async function savePlanOrder(table,rows,userId) {
+  if(!['training_exercises','training_targets'].includes(table))throw new Error('Ungültige Reihenfolge.')
+  if(rows.some(row=>row.user_id!==userId))throw new Error('Keine Berechtigung.')
+  unwrap(await supabase.from(table).upsert(rows.map((row,position)=>({...row,position})),{onConflict:'id'}))
+}
+
+export async function saveSessionOrder(sessionId,items) {
+  unwrap(await supabase.rpc('reorder_training_session',{p_session_id:sessionId,p_items:items}))
+}
+
 export async function cancelWorkout(sessionId,userId) {
   const deleted=unwrap(await supabase.from('training_sessions')
     .delete().eq('id',sessionId).eq('user_id',userId).is('finished_at',null)
