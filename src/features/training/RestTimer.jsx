@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react'
+import { WorkoutDialog } from './WorkoutDialog'
+import { adjustTimer, timerMilliseconds, timerText, toggleTimer } from './timerClock'
 
-export function RestTimer({initialSeconds,onSkip}) {
-  const [remaining,setRemaining] = useState(initialSeconds)
-  const [running,setRunning] = useState(true)
-  const [deadline,setDeadline] = useState(()=>Date.now()+initialSeconds*1000)
+export function RestTimer({initialSeconds,idleSeconds=120}) {
+  const [now,setNow]=useState(()=>Date.now())
+  const [clock,setClock]=useState(()=>({active:initialSeconds!=null,running:initialSeconds!=null,
+    deadline:initialSeconds!=null?now+initialSeconds*1000:null,remainingMs:(initialSeconds??idleSeconds)*1000}))
+  const [open,setOpen]=useState(false)
+  useEffect(()=>{setClock(current=>current.active?current:{...current,remainingMs:idleSeconds*1000})},[idleSeconds])
   useEffect(()=>{
-    if (!running || remaining <= 0) return undefined
-    const id = window.setInterval(()=>setRemaining(Math.max(0,Math.ceil((deadline-Date.now())/1000))),250)
+    if(!clock.running)return
+    const id=window.setInterval(()=>setNow(Date.now()),250)
     return ()=>window.clearInterval(id)
-  },[running,remaining,deadline])
-  useEffect(()=>{ if (remaining===0) setRunning(false) },[remaining])
-  const time = `${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,'0')}`
-  return <aside className="timer" aria-live="polite">
-    <div><span>Pause</span><strong>{remaining===0?'Pause beendet':time}</strong></div>
-    <div className="actions">
-      <button type="button" onClick={()=>{if(!running)setDeadline(Date.now()+remaining*1000);setRunning(v=>!v)}} disabled={remaining===0}>{running?'Pausieren':'Fortsetzen'}</button>
-      <button type="button" onClick={()=>{setRemaining(initialSeconds);setDeadline(Date.now()+initialSeconds*1000);setRunning(true)}}>Neustart</button>
-      <button type="button" onClick={onSkip}>Überspringen</button>
-    </div>
-  </aside>
+  },[clock.running])
+  const milliseconds=timerMilliseconds(clock,now),time=timerText(milliseconds)
+  const green=clock.active&&milliseconds>0
+  function toggle() {const timestamp=Date.now();setNow(timestamp);setClock(current=>toggleTimer(current,timestamp))}
+  function adjust(seconds) {setNow(Date.now());setClock(current=>adjustTimer(current,seconds))}
+  return <>
+    <button type="button" className={`floating-timer ${green?'running':'idle'}`} aria-haspopup="dialog" aria-label={clock.active?`Pausentimer ${time}, Steuerung öffnen`:'Pausentimer starten, Steuerung öffnen'} onClick={()=>setOpen(true)}>
+      {clock.active?<span>{time}</span>:<svg aria-hidden="true" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>}
+    </button>
+    {open&&<WorkoutDialog title="Pausentimer" onClose={()=>setOpen(false)}>
+      <div className="timer-popup-controls"><button type="button" onClick={()=>adjust(-15)} aria-label="15 Sekunden abziehen">−</button><strong role="timer">{time}</strong><button type="button" onClick={()=>adjust(15)} aria-label="15 Sekunden hinzufügen">+</button></div>
+      <button type="button" className="primary timer-toggle" onClick={toggle}>{clock.running?'stoppen':'starten'}</button>
+    </WorkoutDialog>}
+  </>
 }
