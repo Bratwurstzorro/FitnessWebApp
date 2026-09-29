@@ -8,6 +8,7 @@ import { nextPlanSet } from './setDefaults'
 import { moved } from './order'
 import { OrderButtons } from './OrderButtons'
 import { TrainingPreview } from './TrainingPreview'
+import { clearTimer, loadActiveTraining, saveActiveTraining } from './timerStorage'
 
 const ProgressView=lazy(()=>import('./ProgressView').then(module=>({default:module.ProgressView})))
 
@@ -31,9 +32,10 @@ function SetEditor({initial,onSave,onCancel}) {
 export function TrainingArea({user,page,onNavigate,onActiveChange}) {
   const [data,setData]=useState(empty),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('')
   const [planId,setPlanId]=useState(null),[dayId,setDayId]=useState(null),[editing,setEditing]=useState(null),[timer,setTimer]=useState(null)
-  const [activeSession,setActiveSession]=useState(null),[historyEdit,setHistoryEdit]=useState(null),[preview,setPreview]=useState(null)
+  const [activeSession,setActiveSession]=useState(()=>loadActiveTraining(user.id)),[historyEdit,setHistoryEdit]=useState(null),[preview,setPreview]=useState(null)
+  useEffect(()=>{saveActiveTraining(user.id,activeSession)},[user.id,activeSession])
   const refresh=useCallback(async()=>{setData(await loadTraining(user.id))},[user.id])
-  useEffect(()=>{let live=true;loadTraining(user.id).then(d=>{if(live){setData(d);setLoading(false)}}).catch(e=>{if(live){setError(e.message);setLoading(false)}});return()=>{live=false}},[user.id])
+  useEffect(()=>{let live=true;loadTraining(user.id).then(d=>{if(live){setData(d);setLoading(false);const restored=loadActiveTraining(user.id);if(restored&&!d.sessions.some(s=>s.id===restored&&!s.finished_at)){clearTimer(user.id,restored);setActiveSession(null);saveActiveTraining(user.id,null)}}}).catch(e=>{if(live){setError(e.message);setLoading(false)}});return()=>{live=false}},[user.id])
   async function perform(task) {setBusy(true);setError('');try{await task();await refresh();return true}catch(e){setError(e.message||'Speichern fehlgeschlagen.');return false}finally{setBusy(false)}}
   const plan=data.plans.find(p=>p.id===planId),day=data.days.find(d=>d.id===dayId)
   const days=data.days.filter(d=>d.plan_id===planId),exercises=data.exercises.filter(e=>e.day_id===dayId)
