@@ -46,7 +46,7 @@ export function TrainingArea({user,page,onNavigate}) {
   }
   const editingAt=(kind,id)=>editing?.kind===kind && editing.id===id
   if(loading) return <div className="training-surface"><main className="shell">Training wird geladen …</main></div>
-  return <div className="training-surface"><div className="shell">
+  return <div className="training-surface"><div className={`shell ${page==='progress'?'progress-shell':''}`}>
     {error&&<div className="notice error" role="alert">{error}</div>}
     {page==='plans'&&<>
       <div className="section-title"><div><span className="eyebrow">DEINE ROUTINE</span><h2>{day?day.name:plan?plan.name:'Trainingspläne'}</h2></div>{day?<button onClick={()=>setDayId(null)}>← Tage</button>:plan?<button onClick={()=>setPlanId(null)}>← Pläne</button>:null}</div>

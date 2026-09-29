@@ -20,7 +20,8 @@
 /* Exercise progress uses the same compact previews and expanded time ranges as BodyTrack. */
 .training-surface .tabs button{min-width:0;padding:8px 5px;font-size:clamp(.72rem,2.6vw,.9rem)}
 .training-surface .progress-intro{font-size:.88rem;line-height:1.5;margin:-4px 0 19px}
-.training-surface .progress-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.training-surface .shell.progress-shell{max-width:1420px;padding-left:26px;padding-right:26px}
+.training-surface .progress-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .training-surface .progress-card{display:block;width:100%;min-width:0;text-align:left;overflow:hidden}
 .training-surface .progress-card:hover{border-color:#9abdb5;box-shadow:0 8px 25px #17283214}
 .training-surface .progress-card-head{display:flex;justify-content:space-between;align-items:start;gap:8px;color:#586f6a;font-size:.85rem}
@@ -46,4 +47,5 @@
 .training-surface .progress-stats small{font-size:.75rem;color:#6d807d}
 .training-surface .progress-stats strong{font-size:1.12rem;overflow-wrap:anywhere}
 .training-surface .progress-records .set-row{font-size:.84rem}
-@media(max-width:550px){.training-surface .progress-grid{grid-template-columns:1fr}.training-surface .progress-ranges{grid-template-columns:repeat(3,minmax(0,1fr))}.training-surface .progress-stats{grid-template-columns:1fr}.training-surface .progress-dialog{padding:15px}.training-surface .progress-records .set-row{gap:4px}}
+@media(max-width:700px){.training-surface .shell.progress-shell{padding-left:14px;padding-right:14px}.training-surface .progress-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.training-surface .progress-card{padding:12px}.training-surface .progress-value{font-size:clamp(1.25rem,6vw,1.8rem)}}
+@media(max-width:550px){.training-surface .progress-ranges{grid-template-columns:repeat(3,minmax(0,1fr))}.training-surface .progress-stats{grid-template-columns:1fr}.training-surface .progress-dialog{padding:15px}.training-surface .progress-records .set-row{gap:4px}}
