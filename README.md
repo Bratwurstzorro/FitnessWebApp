@@ -16,3 +16,5 @@ Die BodyTrack-App erscheint unter `/FitnessWebApp/`. Der bisherige Einstieg `/Fi
 Vite verwendet den GitHub-Pages-Basispfad `/FitnessWebApp/`. Für andere Supabase-Umgebungen `VITE_SUPABASE_URL` und `VITE_SUPABASE_PUBLISHABLE_KEY` setzen; niemals einen geheimen Schlüssel in Vite-Variablen speichern. Für Capacitor kann später der gemeinsame Build `dist` als `webDir` genutzt werden.
 
 Die SQL-Migrationen für Trainingsdaten liegen unter `training/sql/`. Bestehende Messwert- und Trainingstabellen werden für die Zusammenführung nicht geändert.
+
+Die Fortschrittsgraphen zeigen je Übung und abgeschlossenem Training das arithmetische Mittel der tatsächlich geschafften Satzgewichte. Jeder abgeschlossene Satz zählt einmal, unabhängig von der Wiederholungszahl. Im Detail bleibt der schwerste Satz mit seinen Wiederholungen sichtbar.

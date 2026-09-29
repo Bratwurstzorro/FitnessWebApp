@@ -13,7 +13,7 @@ function ProgressChart({points,large=false}) {
       <LineChart data={points} margin={{top:10,right:10,bottom:8,left:10}}>
         {large&&<Tooltip content={({active,payload})=>{
           const point=active&&payload?.[0]?.payload
-          return point?<div className="progress-tooltip"><small>{date(point.date)} · {point.day}</small><strong>{weight(point.weight)} × {point.reps} Wdh.</strong></div>:null
+          return point?<div className="progress-tooltip"><small>{date(point.date)} · {point.day}</small><strong>Ø {weight(point.weight)} · {point.setCount} Sätze</strong><small>Schwerster Satz: {weight(point.maxWeight)} × {point.maxReps} Wdh.</small></div>:null
         }}/>}
         <Line type="monotone" dataKey="weight" stroke="#16806b" strokeWidth={large?3:2}
           dot={large||points.length===1?{r:large?4:3,fill:'#16806b'}:false}
@@ -35,18 +35,18 @@ function ProgressDetail({exercise,onClose}) {
   return <div className="dialog-backdrop progress-backdrop" onMouseDown={onClose}>
     <section className="card progress-dialog" role="dialog" aria-modal="true" aria-labelledby="progress-detail-heading" onMouseDown={event=>event.stopPropagation()}>
       <div className="row"><div><span className="eyebrow">ÜBUNGSVERLAUF</span><h2 id="progress-detail-heading">{exercise.name}</h2></div><button aria-label="Schließen" onClick={onClose}>×</button></div>
-      <p className="muted progress-caption">Höchstes geschafftes Gewicht pro abgeschlossenem Training</p>
+      <p className="muted progress-caption">Durchschnittsgewicht aller abgeschlossenen Sätze je Training. Jeder Satz zählt gleich.</p>
       <ProgressChart points={points} large/>
       <div className="progress-ranges" role="group" aria-label="Zeitraum des Graphen">
         {ranges.map(([key,label])=><button key={key} className={range===key?'active':''} aria-pressed={range===key} onClick={()=>setRange(key)}>{label}</button>)}
       </div>
       {first&&<div className="progress-stats">
-        <div><small>Start</small><strong>{weight(first.weight)}</strong><small>{date(first.date)}</small></div>
-        <div><small>Aktuell</small><strong>{weight(last.weight)}</strong><small>{date(last.date)}</small></div>
-        <div><small>Veränderung</small><strong>{points.length>1?`${last.weight-first.weight>0?'+':''}${weight(last.weight-first.weight)}`:'—'}</strong><small>{points.length} {points.length===1?'Training':'Trainings'}</small></div>
+        <div><small>Start · Ø</small><strong>{weight(first.weight)}</strong><small>{date(first.date)}</small></div>
+        <div><small>Aktuell · Ø</small><strong>{weight(last.weight)}</strong><small>{date(last.date)}</small></div>
+        <div><small>Veränderung · Ø</small><strong>{points.length>1?`${last.weight-first.weight>0?'+':''}${weight(last.weight-first.weight)}`:'—'}</strong><small>{points.length} {points.length===1?'Training':'Trainings'}</small></div>
       </div>}
       <h3>Abgeschlossene Trainings</h3>
-      {points.length?<div className="progress-records">{[...points].reverse().map(point=><div className="set-row" key={point.id}><span>{date(point.date)} · {point.day}</span><strong>{weight(point.weight)} × {point.reps} Wdh.</strong></div>)}</div>:<p className="muted">Keine Trainings in diesem Zeitraum.</p>}
+      {points.length?<div className="progress-records">{[...points].reverse().map(point=><div className="set-row" key={point.id}><span>{date(point.date)} · {point.day}<small className="block">{point.setCount} {point.setCount===1?'Satz':'Sätze'} · schwerster Satz {weight(point.maxWeight)} × {point.maxReps} Wdh.</small></span><strong>Ø {weight(point.weight)}</strong></div>)}</div>:<p className="muted">Keine Trainings in diesem Zeitraum.</p>}
     </section>
   </div>
 }
@@ -56,13 +56,13 @@ export function ProgressView({data}) {
   const [selectedId,setSelectedId]=useState(null)
   const selected=exercises.find(exercise=>exercise.id===selectedId)
   return <>
-    <div className="feature-heading"><div><span className="eyebrow">DEIN VERLAUF</span><h1>Fortschritt</h1><p>Pro Übung zählt das höchste Gewicht eines abgeschlossenen Trainings. Tippe auf einen Graphen für Wiederholungen und weitere Zeiträume.</p></div></div>
+    <div className="feature-heading"><div><span className="eyebrow">DEIN VERLAUF</span><h1>Fortschritt</h1><p>Der Graph zeigt das durchschnittliche Gewicht aller abgeschlossenen Sätze je Übung und Training. Tippe auf einen Graphen für Details und weitere Zeiträume.</p></div></div>
     {exercises.length?<div className="progress-grid">{exercises.map(exercise=>{
       const first=exercise.points[0],last=exercise.points.at(-1)
       const change=exercise.points.length>1?last.weight-first.weight:null
       return <button type="button" className="card progress-card" key={exercise.id} onClick={()=>setSelectedId(exercise.id)}>
         <span className="progress-card-head"><strong>{exercise.name}</strong><span aria-hidden="true">↗</span></span>
-        <span className="progress-value">{last.weight.toLocaleString('de-DE',{maximumFractionDigits:2})} <span>kg</span></span>
+        <span className="progress-value">Ø {last.weight.toLocaleString('de-DE',{maximumFractionDigits:2})} <span>kg</span></span>
         <ProgressChart points={exercise.points}/>
         <span className="progress-change">{change===null?'Ein Training':`${change>0?'+':''}${weight(change)} seit ${date(first.date)}`}</span>
       </button>

@@ -1,5 +1,5 @@
-// A workout contributes its heaviest completed set to each exercise's curve.
-// Repetitions break ties, so every point represents a set that was actually done.
+// Each workout contributes the arithmetic mean of all its completed sets.
+// Keep the heaviest set separately for context in the detail view.
 export function exerciseProgress(sets, sessions, catalog) {
   const finished=new Map(sessions.filter(session=>session.finished_at).map(session=>[session.id,session]))
   const names=new Map(catalog.map(exercise=>[exercise.id,exercise.name]))
@@ -10,15 +10,24 @@ export function exerciseProgress(sets, sessions, catalog) {
     const key=set.catalog_exercise_id ?? `name:${set.exercise_name}`
     if(!exercises.has(key))exercises.set(key,{id:key,name:names.get(key)??set.exercise_name,points:new Map()})
     const points=exercises.get(key).points
-    const existing=points.get(session.id)
+    let point=points.get(session.id)
     const weight=Number(set.actual_weight_kg),reps=Number(set.actual_reps)
-    if(!existing || weight>existing.weight || (weight===existing.weight && reps>existing.reps)){
-      points.set(session.id,{id:session.id,date:session.finished_at,weight,reps,day:session.day_name})
+    if(!point){
+      point={id:session.id,date:session.finished_at,sumWeight:0,setCount:0,maxWeight:weight,maxReps:reps,day:session.day_name}
+      points.set(session.id,point)
+    }
+    point.sumWeight+=weight
+    point.setCount+=1
+    if(weight>point.maxWeight || (weight===point.maxWeight && reps>point.maxReps)){
+      point.maxWeight=weight
+      point.maxReps=reps
     }
   }
   return [...exercises.values()].map(exercise=>({
     id:exercise.id,name:exercise.name,
-    points:[...exercise.points.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id)),
+    points:[...exercise.points.values()]
+      .map(({sumWeight,...point})=>({...point,weight:sumWeight/point.setCount}))
+      .sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id)),
   })).sort((a,b)=>a.name.localeCompare(b.name,'de'))
 }
 

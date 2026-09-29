@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { exerciseProgress, progressForRange } from './exerciseProgress.js'
 
-test('groups the strongest completed set per finished workout by shared exercise ID',()=>{
+test('averages completed sets per finished workout across plans and retains its strongest set',()=>{
   const sessions=[
     {id:'one',day_name:'Push',finished_at:'2026-01-10T12:00:00Z'},
     {id:'two',day_name:'Ganzkörper',finished_at:'2026-09-20T12:00:00Z'},
@@ -19,7 +19,7 @@ test('groups the strongest completed set per finished workout by shared exercise
   ]
   const result=exerciseProgress(sets,sessions,[{id:'press',name:'Bankdrücken'},{id:'different',name:'Andere Übung'}])
   assert.equal(result.length,2)
-  assert.deepEqual(result.find(ex=>ex.id==='press').points.map(p=>[p.weight,p.reps]),[[45,6],[52,10]])
+  assert.deepEqual(result.find(ex=>ex.id==='press').points.map(p=>[p.weight,p.setCount,p.maxWeight,p.maxReps]),[[42.5,2,45,6],[52,2,52,10]])
   assert.equal(progressForRange(result.find(ex=>ex.id==='press').points,'1m').length,1)
   assert.equal(progressForRange(result.find(ex=>ex.id==='press').points,'all').length,2)
 })
