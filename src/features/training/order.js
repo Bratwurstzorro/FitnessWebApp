@@ -6,10 +6,9 @@ export function moved(items,index,direction) {
 }
 
 // Preserve row IDs, values and completion dates; only the ordering changes.
-export function sessionOrder(sets,kind,index,direction,exercisePosition) {
+export function sessionOrder(sets,index,direction) {
   let groups=[...new Set(sets.map(set=>set.exercise_position))].sort((a,b)=>a-b)
     .map(position=>sets.filter(set=>set.exercise_position===position).sort((a,b)=>a.set_position-b.set_position))
-  if(kind==='exercise')groups=moved(groups,index,direction)
-  else groups=groups.map(group=>group[0].exercise_position===exercisePosition?moved(group,index,direction):group)
+  groups=moved(groups,index,direction)
   return groups.flatMap((group,exercise_position)=>group.map((set,set_position)=>({id:set.id,exercise_position,set_position})))
 }

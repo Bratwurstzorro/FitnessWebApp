@@ -10,22 +10,18 @@ test('moves only the selected neighboring item and keeps its values and ID',()=>
   assert.deepEqual(rows.map(r=>r.id),['a','b','c'])
 })
 
-test('reorders whole exercises or individual sets, normalizing gaps without mixing exercises',()=>{
+test('reorders whole exercises while preserving the relative order of their sets',()=>{
   const rows=[
     {id:'a1',exercise_position:2,set_position:0},
     {id:'b1',exercise_position:5,set_position:1},
     {id:'a2',exercise_position:2,set_position:3},
   ]
-  assert.deepEqual(sessionOrder(rows,'exercise',1,-1),[
+  assert.deepEqual(sessionOrder(rows,1,-1),[
     {id:'b1',exercise_position:0,set_position:0},
     {id:'a1',exercise_position:1,set_position:0},
     {id:'a2',exercise_position:1,set_position:1},
   ])
-  assert.deepEqual(sessionOrder(rows,'set',1,-1,2),[
-    {id:'a2',exercise_position:0,set_position:0},
-    {id:'a1',exercise_position:0,set_position:1},
-    {id:'b1',exercise_position:1,set_position:0},
-  ])
+
 })
 
 test('a historical correction, added set or deleted set changes the weighted progress at the original date',()=>{

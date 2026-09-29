@@ -9,10 +9,10 @@ import { ExercisePicker } from './ExercisePicker'
 import { OrderButtons } from './OrderButtons'
 import { sessionOrder } from './order'
 
-function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,onMove,count,historyMode}) {
+function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,historyMode}) {
   const advice = recommendation(previous,value.target_reps,value.target_weight_kg)
   return <div className={`workout-set ${value.completed_at?'complete':''}`}>
-    <div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><div className="actions"><OrderButtons index={index} count={count} busy={busy} label={`Satz ${index+1}`} onMove={onMove}/><button disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>Entfernen</button></div></div>
+    <div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><div className="actions"><button disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>Entfernen</button></div></div>
     {!historyMode&&<><small>Ziel {value.target_weight_kg} kg × {value.target_reps} · zuletzt {previous?`${previous.actual_weight_kg} kg × ${previous.actual_reps}`:'kein früherer Satz'}</small>
     <div className="advice"><strong>Empfehlung: {advice.label}</strong><small>{advice.detail}</small></div></>}
     <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:parseNumeric(values.weight),actual_reps:parseNumeric(values.reps)})}} className="set-controls">
@@ -82,9 +82,9 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       const firstPrevious=previousForSet(data.sets,data.sessions,session,group[0])
       const defaults=workoutValues(group,drafts,recommendation(firstPrevious,group[0].target_reps,group[0].target_weight_kg))
       return <article className="card" key={group[0].exercise_id}>
-        <div className="row"><div><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small></div><div className="actions"><OrderButtons index={groupIndex} count={groups.length} busy={busy} label={group[0].exercise_name} onMove={direction=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,'exercise',groupIndex,direction)))}/><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${group[0].exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,pos,user.id))}}>Übung entfernen</button></div></div>
+        <div className="row"><div><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small></div><div className="actions"><OrderButtons index={groupIndex} count={groups.length} busy={busy} label={group[0].exercise_name} onMove={direction=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,groupIndex,direction)))}/><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${group[0].exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,pos,user.id))}}>Übung entfernen</button></div></div>
         <div className="stack sets">{group.map((set,index)=><WorkoutSet key={set.id} value={set} index={index} values={defaults[index]} onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))}
-          historyMode={historyMode} count={group.length} onMove={direction=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,'set',index,direction,pos)))} previous={previousForSet(data.sets,data.sessions,session,set)} busy={busy}
+          historyMode={historyMode} previous={previousForSet(data.sets,data.sessions,session,set)} busy={busy}
           onRemove={()=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
           onDone={values=>saveSet(set,values)}/>)}
         </div><button className="link" disabled={busy} onClick={()=>addSet(group)}>+ Satz hinzufügen</button>

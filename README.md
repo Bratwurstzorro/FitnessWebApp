@@ -19,6 +19,8 @@ Die SQL-Migrationen für Trainingsdaten liegen unter `training/sql/`. Bestehende
 
 Die Fortschrittsgraphen zeigen je Übung und abgeschlossenem Training das durchschnittlich bewegte Gewicht pro geschaffter Wiederholung: `Σ(Gewicht × Wiederholungen) / Σ(Wiederholungen)`. Abgeschlossene Sätze mit null Wiederholungen zählen nicht. Im Detail bleibt der schwerste Satz mit seinen Wiederholungen sichtbar.
 
-Übungen und Sätze können im Plan, im laufenden Training und bei der Historienbearbeitung mit den Pfeiltasten umsortiert werden. `training/sql/006_session_order.sql` stellt dafür eine atomare, benutzergebundene Funktion bereit; sie läuft mit den Rechten des Aufrufers und den bestehenden RLS-Regeln.
+Übungen können im Plan, im laufenden Training und bei der Historienbearbeitung mit den Pfeiltasten umsortiert werden. Die Reihenfolge der Sätze innerhalb einer Übung bleibt erhalten. `training/sql/006_session_order.sql` stellt dafür eine atomare, benutzergebundene Funktion bereit; sie läuft mit den Rechten des Aufrufers und den bestehenden RLS-Regeln.
 
 In der Historie öffnet „Training bearbeiten“ dieselben modularen Satz- und Übungsbausteine. Gewicht und Wiederholungen werden mit „Satz speichern“ korrigiert; ergänzte Sätze zählen erst nach dem Speichern zum Fortschritt. Übungen und Sätze können ergänzt oder entfernt werden. Historienkorrekturen bewahren das ursprüngliche Abschlussdatum und aktualisieren die Fortschrittsberechnung unmittelbar.
+
+Unter Training öffnet ein Klick auf die Trainingszeile zuerst eine Vorschau mit Planname, Trainingstag, Übungs- und Satzanzahl sowie den geplanten Wiederholungen je Übung. Erst „Starten“ in dieser Vorschau legt das Training an.
