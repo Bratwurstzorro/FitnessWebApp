@@ -14,3 +14,5 @@
 .footer-actions{flex-wrap:wrap}
 .footer-actions>button{flex:1 1 160px}
 .cancel-button{border-color:#e4a9a0;color:#a3372b}
+
+.exercise-search{position:relative;min-width:0}.exercise-search>input{margin-top:5px}.exercise-suggestions{position:absolute;top:100%;left:0;right:0;z-index:5;max-height:240px;overflow-y:auto;background:white;border:1px solid #cbd6d4;border-radius:10px;box-shadow:0 8px 22px #17283224}.exercise-suggestions [role=option],.exercise-no-match{padding:12px 14px;min-height:44px}.exercise-suggestions [role=option]{cursor:pointer}.exercise-suggestions [role=option]:hover,.exercise-suggestions [role=option].active{background:#e9f5f1;color:#126758}.exercise-no-match{color:#60736c;font-size:.9rem}
