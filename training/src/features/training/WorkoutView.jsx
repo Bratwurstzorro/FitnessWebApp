@@ -1,26 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { addWorkoutExercise, cancelWorkout, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update } from './api'
 import { previousForSet, recommendation } from './progression'
 import { RestTimer } from './RestTimer'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
+import { workoutValues } from './setDefaults'
 
-function WorkoutSet({value,index,previous,busy,onDone,onRemove}) {
+function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove}) {
   const advice = recommendation(previous,value.target_reps,value.target_weight_kg)
-  const [weight,setWeight] = useState(String(value.actual_weight_kg ?? advice.weight))
-  const [reps,setReps] = useState(String(value.actual_reps ?? advice.reps))
-  useEffect(()=>{
-    if (value.completed_at) {
-      setWeight(String(value.actual_weight_kg));setReps(String(value.actual_reps))
-    }
-  },[value.completed_at,value.actual_weight_kg,value.actual_reps])
   return <div className={`workout-set ${value.completed_at?'complete':''}`}>
     <div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><button disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>Entfernen</button></div>
     <small>Ziel {value.target_weight_kg} kg × {value.target_reps} · zuletzt {previous?`${previous.actual_weight_kg} kg × ${previous.actual_reps}`:'kein früherer Satz'}</small>
     <div className="advice"><strong>Empfehlung: {advice.label}</strong><small>{advice.detail}</small></div>
-    <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:parseNumeric(weight),actual_reps:parseNumeric(reps)})}} className="set-controls">
-      <label>kg<NumericInput aria-label={`Satz ${index+1} Gewicht`} kind="weight" max="9999" value={weight} onChange={setWeight}/></label>
-      <label>Wdh.<NumericInput aria-label={`Satz ${index+1} Wiederholungen`} kind="reps" max="1000" value={reps} onChange={setReps}/></label>
+    <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:parseNumeric(values.weight),actual_reps:parseNumeric(values.reps)})}} className="set-controls">
+      <label>kg<NumericInput aria-label={`Satz ${index+1} Gewicht`} kind="weight" max="9999" value={values.weight} onChange={weight=>onDraft({...values,weight})}/></label>
+      <label>Wdh.<NumericInput aria-label={`Satz ${index+1} Wiederholungen`} kind="reps" max="1000" value={values.reps} onChange={reps=>onDraft({...values,reps})}/></label>
       <button className="primary" disabled={busy}>{value.completed_at?'Korrigieren':'Satz fertig'}</button>
     </form>
   </div>
@@ -38,17 +32,22 @@ function AddExercise({exercises,onAdd,onCancel,busy}) {
 
 export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,error,perform,onClose}) {
   const [adding,setAdding]=useState(false),[finishing,setFinishing]=useState(false)
+  const [drafts,setDrafts]=useState({})
   const groups=[...new Set(currentSets.map(s=>s.exercise_position))].sort((a,b)=>a-b)
   const available=data.exercises.filter(ex=>!currentSets.some(s=>s.exercise_id===ex.id))
 
   async function addSet(group) {
     const last=group[group.length-1]
-    await perform(()=>insert('training_session_sets',{
-      user_id:user.id,session_id:session.id,exercise_id:last.exercise_id,exercise_name:last.exercise_name,
-      exercise_position:last.exercise_position,set_position:Math.max(...group.map(s=>s.set_position))+1,
-      rest_seconds:last.rest_seconds,target_weight_kg:last.actual_weight_kg??last.target_weight_kg,
-      target_reps:last.actual_reps||last.target_reps,
-    }))
+    const previous=previousForSet(data.sets,data.sessions,session,group[0])
+    const values=workoutValues(group,drafts,recommendation(previous,group[0].target_reps,group[0].target_weight_kg)).at(-1)
+    await perform(async()=>{
+      if(!values.weight||!values.reps)throw new Error('Bitte zuerst Gewicht und Wiederholungen des vorherigen Satzes ausfüllen.')
+      await insert('training_session_sets',{
+        user_id:user.id,session_id:session.id,exercise_id:last.exercise_id,exercise_name:last.exercise_name,
+        exercise_position:last.exercise_position,set_position:Math.max(...group.map(s=>s.set_position))+1,
+        rest_seconds:last.rest_seconds,target_weight_kg:parseNumeric(values.weight),target_reps:parseNumeric(values.reps),
+      })
+    })
   }
   async function addExercise(selected,name,rest) {
     const existing=data.exercises.find(ex=>ex.id===selected)
@@ -72,9 +71,11 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
     {timer&&<RestTimer key={timer.key} initialSeconds={timer.seconds} onSkip={()=>setTimer(null)}/>}
     <div className="stack">{groups.map(pos=>{
       const group=currentSets.filter(s=>s.exercise_position===pos).sort((a,b)=>a.set_position-b.set_position)
+      const firstPrevious=previousForSet(data.sets,data.sessions,session,group[0])
+      const defaults=workoutValues(group,drafts,recommendation(firstPrevious,group[0].target_reps,group[0].target_weight_kg))
       return <article className="card" key={pos}>
         <div className="row"><div><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small></div><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${group[0].exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,pos,user.id))}}>Übung entfernen</button></div>
-        <div className="stack sets">{group.map((set,index)=><WorkoutSet key={set.id} value={set} index={index}
+        <div className="stack sets">{group.map((set,index)=><WorkoutSet key={set.id} value={set} index={index} values={defaults[index]} onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))}
           previous={previousForSet(data.sets,data.sessions,session,set)} busy={busy}
           onRemove={()=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
           onDone={values=>perform(async()=>{await update('training_session_sets',set.id,user.id,{...values,completed_at:new Date().toISOString()});setTimer({key:set.id+Date.now(),seconds:set.rest_seconds})})}/>)}

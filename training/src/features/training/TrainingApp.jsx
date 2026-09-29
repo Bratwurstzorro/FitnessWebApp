@@ -4,6 +4,7 @@ import { insert, loadTraining, remove, startSession, update } from './api'
 import { WorkoutView } from './WorkoutView'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
+import { nextPlanSet } from './setDefaults'
 
 const empty = {plans:[],days:[],exercises:[],targets:[],sessions:[],sets:[]}
 const date = (stamp) => new Date(stamp).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})
@@ -72,7 +73,7 @@ function Training({user}) {
         {editingAt('exercise',ex.id)&&<PromptForm label="Übungsname" value={ex.name} onCancel={()=>setEditing(null)} onSave={name=>perform(async()=>{await update('training_exercises',ex.id,user.id,{name});setEditing(null)})}/>}
         <label className="rest-label">Pause je Satz <select value={ex.rest_seconds} onChange={e=>perform(()=>update('training_exercises',ex.id,user.id,{rest_seconds:number(e.target.value)}))}>{[60,90,120,180].map(v=><option key={v} value={v}>{v} Sekunden</option>)}</select></label>
         <div className="set-list">{data.targets.filter(t=>t.exercise_id===ex.id).map((t,i)=><div className="set-row" key={t.id}><span>Satz {i+1}</span><strong>{t.weight_kg} kg × {t.reps}</strong><div className="actions"><button onClick={()=>setEditing({kind:'target',id:t.id})}>Ändern</button><button disabled={busy} onClick={()=>perform(()=>remove('training_targets',t.id,user.id))}>×</button></div>{editingAt('target',t.id)&&<SetEditor initial={t} onCancel={()=>setEditing(null)} onSave={values=>perform(async()=>{await update('training_targets',t.id,user.id,values);setEditing(null)})}/>}</div>)}</div>
-        {editingAt('newtarget',ex.id)?<SetEditor initial={data.targets.filter(t=>t.exercise_id===ex.id).at(-1)} onCancel={()=>setEditing(null)} onSave={values=>perform(async()=>{await insert('training_targets',{user_id:user.id,exercise_id:ex.id,position:Math.max(-1,...data.targets.filter(t=>t.exercise_id===ex.id).map(t=>t.position))+1,...values});setEditing(null)})}/>:<button className="link" onClick={()=>setEditing({kind:'newtarget',id:ex.id})}>+ Satz hinzufügen</button>}</article>)}
+        {editingAt('newtarget',ex.id)?<SetEditor key={`new-${ex.id}-${editing.initial.position}`} initial={editing.initial} onCancel={()=>setEditing(null)} onSave={values=>perform(async()=>{await insert('training_targets',{user_id:user.id,exercise_id:ex.id,position:editing.initial.position,...values});setEditing(null)})}/>:<button className="link" disabled={busy} onClick={()=>setEditing({kind:'newtarget',id:ex.id,initial:nextPlanSet(data.targets,ex.id)})}>+ Satz hinzufügen</button>}</article>)}
         {editingAt('newexercise',null)?<PromptForm label="Übungsname" onCancel={()=>setEditing(null)} onSave={name=>perform(async()=>{await insert('training_exercises',{user_id:user.id,day_id:day.id,name,position:exercises.length});setEditing(null)})}/>:<button className="add" onClick={()=>setEditing({kind:'newexercise',id:null})}>+ Übung hinzufügen</button>}</div>}
     </>}
     {page==='workout'&&<><div className="section-title"><div><span className="eyebrow">LIVE</span><h2>{session?session.day_name:'Training starten'}</h2></div></div>
