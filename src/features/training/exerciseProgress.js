@@ -1,4 +1,4 @@
-// Each workout contributes the arithmetic mean of all its completed sets.
+// Each workout contributes total volume load divided by completed repetitions.
 // Keep the heaviest set separately for context in the detail view.
 export function exerciseProgress(sets, sessions, catalog) {
   const finished=new Map(sessions.filter(session=>session.finished_at).map(session=>[session.id,session]))
@@ -7,16 +7,18 @@ export function exerciseProgress(sets, sessions, catalog) {
   for(const set of sets) {
     const session=finished.get(set.session_id)
     if(!session || !set.completed_at || set.actual_weight_kg==null || set.actual_reps==null)continue
+    const weight=Number(set.actual_weight_kg),reps=Number(set.actual_reps)
+    if(!Number.isFinite(weight) || !Number.isFinite(reps) || reps<=0)continue
     const key=set.catalog_exercise_id ?? `name:${set.exercise_name}`
     if(!exercises.has(key))exercises.set(key,{id:key,name:names.get(key)??set.exercise_name,points:new Map()})
     const points=exercises.get(key).points
     let point=points.get(session.id)
-    const weight=Number(set.actual_weight_kg),reps=Number(set.actual_reps)
     if(!point){
-      point={id:session.id,date:session.finished_at,sumWeight:0,setCount:0,maxWeight:weight,maxReps:reps,day:session.day_name}
+      point={id:session.id,date:session.finished_at,volumeLoad:0,totalReps:0,setCount:0,maxWeight:weight,maxReps:reps,day:session.day_name}
       points.set(session.id,point)
     }
-    point.sumWeight+=weight
+    point.volumeLoad+=weight*reps
+    point.totalReps+=reps
     point.setCount+=1
     if(weight>point.maxWeight || (weight===point.maxWeight && reps>point.maxReps)){
       point.maxWeight=weight
@@ -26,7 +28,7 @@ export function exerciseProgress(sets, sessions, catalog) {
   return [...exercises.values()].map(exercise=>({
     id:exercise.id,name:exercise.name,
     points:[...exercise.points.values()]
-      .map(({sumWeight,...point})=>({...point,weight:sumWeight/point.setCount}))
+      .map(({volumeLoad,...point})=>({...point,weight:volumeLoad/point.totalReps}))
       .sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id)),
   })).sort((a,b)=>a.name.localeCompare(b.name,'de'))
 }

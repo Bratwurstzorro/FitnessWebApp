@@ -17,4 +17,4 @@ Vite verwendet den GitHub-Pages-Basispfad `/FitnessWebApp/`. Für andere Supabas
 
 Die SQL-Migrationen für Trainingsdaten liegen unter `training/sql/`. Bestehende Messwert- und Trainingstabellen werden für die Zusammenführung nicht geändert.
 
-Die Fortschrittsgraphen zeigen je Übung und abgeschlossenem Training das arithmetische Mittel der tatsächlich geschafften Satzgewichte. Jeder abgeschlossene Satz zählt einmal, unabhängig von der Wiederholungszahl. Im Detail bleibt der schwerste Satz mit seinen Wiederholungen sichtbar.
+Die Fortschrittsgraphen zeigen je Übung und abgeschlossenem Training das durchschnittlich bewegte Gewicht pro geschaffter Wiederholung: `Σ(Gewicht × Wiederholungen) / Σ(Wiederholungen)`. Abgeschlossene Sätze mit null Wiederholungen zählen nicht. Im Detail bleibt der schwerste Satz mit seinen Wiederholungen sichtbar.
