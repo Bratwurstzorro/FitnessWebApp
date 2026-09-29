@@ -33,3 +33,7 @@ export function nextExerciseAfterSet(groups,set) {
 export function canOfferPlanUpdate(sets) {
   return sets.length>0&&sets.every(set=>!!set.completed_at)
 }
+
+export function confirmsLastWorkoutSet(sets,set) {
+  return !set.completed_at&&sets.some(row=>row.id===set.id)&&sets.every(row=>row.id===set.id||!!row.completed_at)
+}

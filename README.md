@@ -42,3 +42,5 @@ Der Pausentimer ist als kompakte Anzeige mittig am unteren Bildschirmrand fixier
 „stoppen“ setzt den Pausentimer auf die ursprünglich eingestellte Pausenzeit zurück; „starten“ zählt von dort erneut herunter. Die feste Anzeige wurde auf 180 × 96 px Mindestgröße verdoppelt.
 
 Timerzustand und geöffnete Trainings-ID werden lokal und getrennt nach Benutzer/Training gespeichert. Nach Neuladen wird ein noch offenes Training wieder geöffnet; gespeicherte Ablaufzeitpunkte liefern Restzeit bzw. Überzeit. Gestoppte Timer behalten Uhrsymbol und ursprüngliche Pausenzeit. Satzbestätigung ersetzt den gespeicherten Timer. Beim Abschließen oder Abbrechen wird der Timer entfernt; „Später fortsetzen“ bewahrt ihn für die nächste Fortsetzung. Keine Synchronisierung zwischen Geräten.
+
+Nach erfolgreicher Bestätigung des letzten offenen Satzes im gesamten Training erscheint die Auswahl „Training abschließen“ oder „weitermachen“. Der Abschluss führt zur bestehenden optionalen Planübernahme; weitermachen erlaubt weitere Sätze/Übungen. Korrekturen bereits bestätigter Sätze lösen die Auswahl nicht erneut aus.

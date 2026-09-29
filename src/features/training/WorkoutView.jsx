@@ -10,7 +10,7 @@ import { OrderButtons } from './OrderButtons'
 import { sessionOrder } from './order'
 import { ActiveExercises } from './ActiveExercises'
 import { WorkoutDialog } from './WorkoutDialog'
-import { canOfferPlanUpdate } from './trainingFocus'
+import { canOfferPlanUpdate, confirmsLastWorkoutSet } from './trainingFocus'
 import { clearTimer } from './timerStorage'
 
 function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,historyMode}) {
@@ -30,7 +30,7 @@ function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,hi
 export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,error,perform,onClose,historyMode=false}) {
   const [adding,setAdding]=useState(false),[finishing,setFinishing]=useState(false)
   const [drafts,setDrafts]=useState({}),[menu,setMenu]=useState(false),[exerciseMenu,setExerciseMenu]=useState(false)
-  const [selectedExercise,setSelectedExercise]=useState(null)
+  const [selectedExercise,setSelectedExercise]=useState(null),[completedPrompt,setCompletedPrompt]=useState(false)
   const groups=[...new Set(currentSets.map(s=>s.exercise_position))].sort((a,b)=>a-b)
 
   const selectedPosition=currentSets.find(set=>set.exercise_id===selectedExercise)?.exercise_position
@@ -45,7 +45,10 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       await update('training_session_sets',set.id,user.id,{...values,completed_at:set.completed_at??(historyMode?session.finished_at:new Date().toISOString())})
       if(!historyMode&&!set.completed_at)setTimer({key:set.id+Date.now(),seconds:set.rest_seconds})
     })
-    if(success)setDrafts(current=>{const next={...current};delete next[set.id];return next})
+    if(success){
+      setDrafts(current=>{const next={...current};delete next[set.id];return next})
+      if(!historyMode&&confirmsLastWorkoutSet(currentSets,set))setCompletedPrompt(true)
+    }
     return success
   }
 
@@ -84,6 +87,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
   }
   function requestFinish() {
     setMenu(false)
+    setCompletedPrompt(false)
     if(canOfferPlanUpdate(currentSets))setFinishing(true)
     else finish(false)
   }
@@ -101,6 +105,10 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       <button className="primary" disabled={busy} onClick={requestFinish}>Training abschließen</button>
       <button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button>
       <button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button>
+    </WorkoutDialog>}
+    {!historyMode&&completedPrompt&&<WorkoutDialog title="Alle Sätze bestätigt" busy={busy} showClose={false} onClose={()=>setCompletedPrompt(false)}>
+      <button className="primary" disabled={busy} onClick={requestFinish}>Training abschließen</button>
+      <button disabled={busy} onClick={()=>setCompletedPrompt(false)}>weitermachen</button>
     </WorkoutDialog>}
     {!historyMode&&exerciseMenu&&<WorkoutDialog title="Übungsaktionen" busy={busy} error={error} onClose={()=>setExerciseMenu(false)}>
       <button disabled={busy} onClick={()=>{setExerciseMenu(false);setAdding(true)}}>Übung hinzufügen</button>
