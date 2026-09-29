@@ -13,8 +13,10 @@ test('stop resets to the original rest duration, including after overtime',()=>{
  const running={active:true,running:true,deadline:60000,remainingMs:60000}
  const stopped=toggleTimer(running,72000,60000)
  assert.equal(stopped.running,false)
+ assert.equal(stopped.active,false)
  assert.equal(timerText(timerMilliseconds(stopped,90000)),'1:00')
  const resumed=toggleTimer(stopped,90000,60000)
+ assert.equal(resumed.active,true)
  assert.equal(timerText(timerMilliseconds(resumed,95000)),'0:55')
 })
 test('15 second adjustments work when running, stopped, idle and across zero',()=>{

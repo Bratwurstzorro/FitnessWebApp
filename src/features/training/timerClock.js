@@ -2,7 +2,7 @@ export function timerMilliseconds(clock,now) {
   return clock.running?clock.deadline-now:clock.remainingMs
 }
 export function toggleTimer(clock,now,initialMs) {
-  if(clock.running)return {...clock,running:false,remainingMs:initialMs,deadline:null}
+  if(clock.running)return {...clock,active:false,running:false,remainingMs:initialMs,deadline:null}
   return {...clock,active:true,running:true,deadline:now+clock.remainingMs}
 }
 export function adjustTimer(clock,seconds) {
