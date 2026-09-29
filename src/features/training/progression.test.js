@@ -14,12 +14,12 @@ test('uses the latest completed value for the same set, not the saved plan value
   const previous=previousForSet(sets,sessions,current,set)
   assert.equal(previous.id,'c')
   assert.equal(recommendation(previous,10,60).weight,72.5)
-  assert.match(recommendation(previous,10,60).label,/1 Wiederholung/)
+  assert.match(recommendation(previous,10,60).label,/12 Wiederholungen versuchen/)
 })
 
 test('recommends a modest increase only after exceeding the target',()=>{
-  assert.match(recommendation({actual_weight_kg:50,actual_reps:12},10,45).label,/51–52,5 kg/)
-  assert.match(recommendation({actual_weight_kg:50,actual_reps:8},10,45).label,/50 kg als Orientierung/)
+  assert.match(recommendation({actual_weight_kg:50,actual_reps:12},10,45).label,/51–52,5 kg mit 10 Wiederholungen prüfen/)
+  assert.match(recommendation({actual_weight_kg:50,actual_reps:8},10,45).label,/50 kg halten, 9 Wiederholungen versuchen/)
   assert.equal(recommendation(null,10,45).weight,45)
 })
 
@@ -32,4 +32,11 @@ test('uses the shared exercise ID across plans and never mixes distinct catalog 
     {session_id:'newer',exercise_id:'another-instance',catalog_exercise_id:'different-press',exercise_name:'Bankdrücken',set_position:0,actual_weight_kg:100,actual_reps:10,completed_at:'2026-09-10T10:00:00Z'},
   ]
   assert.equal(previousForSet(sets,sessions,current,set)?.actual_weight_kg,40)
+})
+
+test('gives an explicit repetition goal while retaining achieved values as input defaults',()=>{
+ const result=recommendation({actual_weight_kg:20,actual_reps:10},10,15)
+ assert.equal(result.label,'20 kg halten, 11 Wiederholungen versuchen')
+ assert.equal(result.reps,10)
+ assert.equal(recommendation(null,10,20).label,'20 kg, 10 Wiederholungen versuchen')
 })

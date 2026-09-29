@@ -12,18 +12,19 @@ export function previousForSet(allSets, sessions, current, set) {
 }
 
 export function recommendation(previous, targetReps, targetWeight) {
+  const kg=n=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:2}).format(n)
+  const repetitions=n=>`${n} ${n===1?'Wiederholung':'Wiederholungen'}`
   if (!previous) return {
     weight:Number(targetWeight), reps:Number(targetReps),
-    label:'Erster Vergleichswert', detail:'Starte mit dem Planwert und passe ihn nach deinem Gefühl an.',
+    label:`${kg(Number(targetWeight))} kg, ${repetitions(Number(targetReps))} versuchen`, detail:'Starte mit dem Planwert und passe ihn nach deinem Gefühl an.',
   }
   const weight=Number(previous.actual_weight_kg), reps=Number(previous.actual_reps)
   if (weight > 0 && reps >= Number(targetReps)+2) {
-    const kg=n=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(n)
-    return {weight,reps,label:`2–5 % mehr prüfen (ca. ${kg(weight*1.02)}–${kg(weight*1.05)} kg)`,
+    return {weight,reps,label:`${kg(weight*1.02)}–${kg(weight*1.05)} kg mit ${repetitions(Number(targetReps))} prüfen`,
       detail:'Du hast das Wiederholungsziel um mindestens 2 übertroffen. Steigere nur bei sauberer Technik; die verfügbare Geräteabstufung darf abweichen.'}
   }
-  if (reps >= Number(targetReps)) return {weight,reps,label:`${weight} kg halten, 1 Wiederholung mehr versuchen`,
+  if (reps >= Number(targetReps)) return {weight,reps,label:`${kg(weight)} kg halten, ${repetitions(Math.min(reps+1,1000))} versuchen`,
     detail:'Erst die Wiederholungen festigen, dann das Gewicht vorsichtig erhöhen.'}
-  return {weight,reps,label:`${weight} kg als Orientierung`,
+  return {weight,reps,label:`${kg(weight)} kg halten, ${repetitions(Math.min(reps+1,Number(targetReps)))} versuchen`,
     detail:'Letztes Mal lagst du unter dem Ziel. Versuche dich zu steigern oder wähle bei Bedarf leichter.'}
 }

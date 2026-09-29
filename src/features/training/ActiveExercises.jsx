@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NumericInput } from './NumericInput'
-import { OrderButtons } from './OrderButtons'
 import { parseNumeric } from './numeric'
 import { workoutValues } from './setDefaults'
 import { previousForSet, recommendation } from './progression'
@@ -23,12 +22,14 @@ function ActiveSet({set,index,values,active,busy,onDraft,onSave,onRemove}) {
   </div>
 }
 
-export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,onSaveSet,onAddSet,onRemoveSet,onMoveExercise}) {
+export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,onSaveSet,onAddSet,onRemoveSet,onExerciseChange}) {
   const groups=exerciseGroups(currentSets)
   const [selected,setSelected]=useState(()=>firstOpenExercise(groups))
   const group=groups.find(g=>g[0].exercise_id===selected)??groups.find(g=>g[0].exercise_id===firstOpenExercise(groups))
+  const selectedId=group?.[0].exercise_id??null
+  useEffect(()=>{onExerciseChange?.(selectedId)},[selectedId,onExerciseChange])
   if(!group)return <div className="card muted">Füge eine Übung hinzu, um das Training fortzusetzen.</div>
-  const first=group[0],groupIndex=groups.indexOf(group),activeIndex=group.findIndex(s=>!s.completed_at),activeSet=group[activeIndex]
+  const first=group[0],activeIndex=group.findIndex(s=>!s.completed_at),activeSet=group[activeIndex]
   const recent=recentExerciseSessions(data,session,first),warmup=warmupSuggestion(recent,first)
   const previous=previousForSet(data.sets,data.sessions,session,first)
   const defaults=workoutValues(group,drafts,recommendation(previous,first.target_reps,first.target_weight_kg))
@@ -54,7 +55,6 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
       <button className="link" disabled={busy} onClick={()=>onAddSet(group)}>+ Satz hinzufügen</button>
       {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong></summary><small>{advice.detail}</small><small>{prior?.completed_at?`Basis: heute Satz #${activeIndex} · ${prior.actual_weight_kg} kg × ${prior.actual_reps}`:baseline?`Zuletzt: ${baseline.actual_weight_kg} kg × ${baseline.actual_reps}`:'Basis: dein Trainingsplan'}</small><small>Laststeigerungen von 2–10 % bei 1–2 Wiederholungen über dem Ziel sind eine ACSM-Orientierung; die konkrete Empfehlung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
       <aside className="recent-training"><strong>Die letzten zwei Trainings</strong>{recent.length?recent.map(previous=><div key={previous.id}><p>{date(previous.finished_at)} · {previous.plan_name} · {previous.day_name}</p>{previous.sets.map((set,index)=><div className="recent-set" key={set.id}><span>Satz #{index+1}</span><span>{set.actual_weight_kg} kg</span><span>{set.actual_reps} Wdh.</span></div>)}</div>):<p>Noch keine abgeschlossenen Trainings für diese Übung.</p>}</aside>
-      <div className="focused-exercise-actions"><OrderButtons index={groupIndex} count={groups.length} busy={busy} label={first.exercise_name} onMove={direction=>onMoveExercise(groupIndex,direction)}/></div>
     </article>
   </>
 }

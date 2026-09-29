@@ -29,7 +29,15 @@ function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,hi
 export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,error,perform,onClose,historyMode=false}) {
   const [adding,setAdding]=useState(false),[finishing,setFinishing]=useState(false)
   const [drafts,setDrafts]=useState({}),[menu,setMenu]=useState(false),[removing,setRemoving]=useState(false)
+  const [selectedExercise,setSelectedExercise]=useState(null)
   const groups=[...new Set(currentSets.map(s=>s.exercise_position))].sort((a,b)=>a-b)
+
+  const selectedPosition=currentSets.find(set=>set.exercise_id===selectedExercise)?.exercise_position
+  const selectedIndex=groups.indexOf(selectedPosition)
+  async function moveSelectedRight() {
+    if(selectedIndex<0||selectedIndex>=groups.length-1)return
+    if(await perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,selectedIndex,1))))setMenu(false)
+  }
 
   async function saveSet(set,values) {
     const success=await perform(async()=>{
@@ -91,6 +99,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
     {!historyMode&&menu&&<WorkoutDialog title="Trainingsaktionen" busy={busy} error={error} onClose={()=>setMenu(false)}>
       <button disabled={busy} onClick={()=>{setMenu(false);setAdding(true)}}>+ Übung hinzufügen</button>
       <button disabled={busy||!currentSets.length} onClick={()=>{setMenu(false);setRemoving(true)}}>Übung entfernen</button>
+      <button disabled={busy||selectedIndex<0||selectedIndex===groups.length-1} onClick={moveSelectedRight}>Übung nach rechts verschieben</button>
       <button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button>
       <button className="primary" disabled={busy} onClick={requestFinish}>Training abschließen</button>
       <button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button>
@@ -101,7 +110,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
     {historyMode&&<p className="muted">{session.plan_name} · begonnen {new Date(session.started_at).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})}</p>}
     {!historyMode&&<ActiveExercises data={data} session={session} currentSets={currentSets} drafts={drafts} setDrafts={setDrafts} busy={busy} onSaveSet={saveSet} onAddSet={addSet}
       onRemoveSet={set=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
-      onMoveExercise={(index,direction)=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,index,direction)))}/>}
+      onExerciseChange={setSelectedExercise}/>}
     {historyMode&&<div className="stack">{groups.map((pos,groupIndex)=>{
       const group=currentSets.filter(s=>s.exercise_position===pos).sort((a,b)=>a.set_position-b.set_position)
       const firstPrevious=previousForSet(data.sets,data.sessions,session,group[0])
