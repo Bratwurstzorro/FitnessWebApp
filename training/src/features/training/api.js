@@ -6,15 +6,29 @@ function unwrap(result) {
 }
 
 export async function loadTraining(userId) {
-  const [plans, days, exercises, targets, sessions, sets] = await Promise.all([
+  const [plans, days, exercises, targets, sessions, sets, catalog] = await Promise.all([
     supabase.from('training_plans').select('*').eq('user_id',userId).order('created_at'),
     supabase.from('training_days').select('*').eq('user_id',userId).order('position'),
     supabase.from('training_exercises').select('*').eq('user_id',userId).order('position'),
     supabase.from('training_targets').select('*').eq('user_id',userId).order('position'),
     supabase.from('training_sessions').select('*').eq('user_id',userId).order('started_at',{ascending:false}),
     supabase.from('training_session_sets').select('*').eq('user_id',userId).order('exercise_position').order('set_position'),
+    supabase.from('training_exercise_catalog').select('id,name').order('name'),
   ])
-  return {plans:unwrap(plans),days:unwrap(days),exercises:unwrap(exercises),targets:unwrap(targets),sessions:unwrap(sessions),sets:unwrap(sets)}
+  return {plans:unwrap(plans),days:unwrap(days),exercises:unwrap(exercises),targets:unwrap(targets),sessions:unwrap(sessions),sets:unwrap(sets),catalog:unwrap(catalog)}
+}
+
+export async function ensureCatalogExercise(name,userId) {
+  const trimmed=name.trim()
+  if(!trimmed || trimmed.length>100)throw new Error('Bitte einen Übungsnamen mit höchstens 100 Zeichen eingeben.')
+  const lookup=()=>supabase.from('training_exercise_catalog').select('id,name').eq('name',trimmed).maybeSingle()
+  const existing=unwrap(await lookup())
+  if(existing)return existing
+  const result=await supabase.from('training_exercise_catalog')
+    .insert({name:trimmed,created_by:userId}).select('id,name').single()
+  if(!result.error)return result.data
+  if(result.error.code==='23505')return unwrap(await lookup())
+  throw result.error
 }
 
 export async function insert(table, value) {
@@ -41,7 +55,8 @@ export async function removeWorkoutExercise(sessionId, exercisePosition, userId)
 
 export async function addWorkoutExercise(userId, sessionId, exercise, targets, position) {
   const rows = (targets.length ? targets : [{weight_kg:0,reps:10}]).map((target,index)=>({
-    user_id:userId,session_id:sessionId,exercise_id:exercise.id,exercise_name:exercise.name,
+    user_id:userId,session_id:sessionId,exercise_id:exercise.id,
+    catalog_exercise_id:exercise.catalog_exercise_id,exercise_name:exercise.name,
     exercise_position:position,set_position:index,rest_seconds:exercise.rest_seconds,
     target_weight_kg:target.weight_kg,target_reps:target.reps,
   }))
@@ -60,6 +75,7 @@ export async function startSession(userId, plan, day, exercises, targets) {
   try {
     const rows = exercises.flatMap((exercise,exercisePosition) => targets.filter(t=>t.exercise_id===exercise.id).map((target,setPosition)=>({
       user_id:userId, session_id:session.id, exercise_id:exercise.id, exercise_name:exercise.name,
+      catalog_exercise_id:exercise.catalog_exercise_id,
       exercise_position:exercisePosition, set_position:setPosition, rest_seconds:exercise.rest_seconds,
       target_weight_kg:target.weight_kg, target_reps:target.reps,
     })))

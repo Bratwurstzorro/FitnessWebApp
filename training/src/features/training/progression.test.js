@@ -22,3 +22,14 @@ test('recommends a modest increase only after exceeding the target',()=>{
   assert.match(recommendation({actual_weight_kg:50,actual_reps:8},10,45).label,/50 kg als Orientierung/)
   assert.equal(recommendation(null,10,45).weight,45)
 })
+
+test('uses the shared exercise ID across plans and never mixes distinct catalog exercises',()=>{
+  const sessions=[{id:'older'},{id:'newer'}]
+  const current={id:'today',started_at:'2026-09-20T10:00:00Z'}
+  const set={exercise_id:'plan-b-instance',catalog_exercise_id:'shared-press',exercise_name:'Bankdrücken',set_position:0}
+  const sets=[
+    {session_id:'older',exercise_id:'plan-a-instance',catalog_exercise_id:'shared-press',exercise_name:'Bankdrücken',set_position:0,actual_weight_kg:40,actual_reps:10,completed_at:'2026-09-01T10:00:00Z'},
+    {session_id:'newer',exercise_id:'another-instance',catalog_exercise_id:'different-press',exercise_name:'Bankdrücken',set_position:0,actual_weight_kg:100,actual_reps:10,completed_at:'2026-09-10T10:00:00Z'},
+  ]
+  assert.equal(previousForSet(sets,sessions,current,set)?.actual_weight_kg,40)
+})

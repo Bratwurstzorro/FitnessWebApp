@@ -4,7 +4,9 @@
 export function previousForSet(allSets, sessions, current, set) {
   const history = allSets.filter(row => row.completed_at && row.session_id !== current.id &&
     row.set_position === set.set_position &&
-    (row.exercise_id === set.exercise_id || row.exercise_name.trim().toLocaleLowerCase('de') === set.exercise_name.trim().toLocaleLowerCase('de')) &&
+    (row.catalog_exercise_id && set.catalog_exercise_id
+      ? row.catalog_exercise_id === set.catalog_exercise_id
+      : row.exercise_id === set.exercise_id || row.exercise_name === set.exercise_name) &&
     sessions.some(session => session.id === row.session_id && row.completed_at < current.started_at))
   return history.sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at))[0] ?? null
 }
