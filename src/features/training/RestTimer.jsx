@@ -15,11 +15,11 @@ export function RestTimer({initialSeconds,idleSeconds=120}) {
   },[clock.running])
   const milliseconds=timerMilliseconds(clock,now),time=timerText(milliseconds)
   const green=clock.active&&milliseconds>0
-  function toggle() {const timestamp=Date.now();setNow(timestamp);setClock(current=>toggleTimer(current,timestamp))}
+  function toggle() {const timestamp=Date.now();setNow(timestamp);setClock(current=>toggleTimer(current,timestamp,(initialSeconds??idleSeconds)*1000))}
   function adjust(seconds) {setNow(Date.now());setClock(current=>adjustTimer(current,seconds))}
   return <>
     <button type="button" className={`floating-timer ${green?'running':'idle'}`} aria-haspopup="dialog" aria-label={clock.active?`Pausentimer ${time}, Steuerung öffnen`:'Pausentimer starten, Steuerung öffnen'} onClick={()=>setOpen(true)}>
-      {clock.active?<span>{time}</span>:<svg aria-hidden="true" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>}
+      {clock.active?<span>{time}</span>:<svg aria-hidden="true" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>}
     </button>
     {open&&<WorkoutDialog title="Pausentimer" onClose={()=>setOpen(false)}>
       <div className="timer-popup-controls"><button type="button" onClick={()=>adjust(-15)} aria-label="15 Sekunden abziehen">−</button><strong role="timer">{time}</strong><button type="button" onClick={()=>adjust(15)} aria-label="15 Sekunden hinzufügen">+</button></div>

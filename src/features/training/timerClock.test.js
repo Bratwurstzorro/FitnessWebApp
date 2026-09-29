@@ -9,13 +9,13 @@ test('keeps counting below zero after expiry and accounts for background time',(
  assert.equal(timerText(timerMilliseconds(clock,61000)),'−0:01')
  assert.equal(timerText(timerMilliseconds(clock,135000)),'−1:15')
 })
-test('stop/start preserves remaining time, including overtime',()=>{
+test('stop resets to the original rest duration, including after overtime',()=>{
  const running={active:true,running:true,deadline:60000,remainingMs:60000}
- const stopped=toggleTimer(running,72000)
+ const stopped=toggleTimer(running,72000,60000)
  assert.equal(stopped.running,false)
- assert.equal(timerText(timerMilliseconds(stopped,90000)),'−0:12')
- const resumed=toggleTimer(stopped,90000)
- assert.equal(timerText(timerMilliseconds(resumed,95000)),'−0:17')
+ assert.equal(timerText(timerMilliseconds(stopped,90000)),'1:00')
+ const resumed=toggleTimer(stopped,90000,60000)
+ assert.equal(timerText(timerMilliseconds(resumed,95000)),'0:55')
 })
 test('15 second adjustments work when running, stopped, idle and across zero',()=>{
  const running={active:true,running:true,deadline:60000,remainingMs:60000}
@@ -25,5 +25,5 @@ test('15 second adjustments work when running, stopped, idle and across zero',()
  const adjusted=adjustTimer(idle,-15)
  assert.equal(adjusted.active,false)
  assert.equal(timerText(timerMilliseconds(adjusted,0)),'1:15')
- assert.equal(toggleTimer(adjusted,1000).deadline,76000)
+ assert.equal(toggleTimer(adjusted,1000,90000).deadline,76000)
 })

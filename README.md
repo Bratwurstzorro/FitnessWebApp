@@ -38,3 +38,5 @@ Im aktiven Training ersetzt „Übung nach rechts verschieben“ im Drei-Punkte-
 Das Zahnrad neben dem Trainingsplan enthält ausschließlich abschließen, abbrechen und später fortsetzen. Das Drei-Punkte-Menü neben der aktiven Übung enthält hinzufügen, die aktive Übung entfernen und nach rechts verschieben. Auch bei einem leeren Training bleibt das Übungsmenü zum Hinzufügen erreichbar.
 
 Der Pausentimer ist als kompakte Anzeige mittig am unteren Bildschirmrand fixiert. Vor der ersten Aktivierung erscheint ein Uhrsymbol auf Grau. Satzbestätigung startet die grüne Restzeit; nach Ablauf läuft die Zeit mit Minuszeichen auf Grau weiter. Antippen öffnet die Steuerung mit stoppen/starten und ±15 Sekunden. Die Uhr verwendet einen Zeitstempel statt Intervallzählung und berücksichtigt daher vergangene Zeit nach Hintergrundphasen.
+
+„stoppen“ setzt den Pausentimer auf die ursprünglich eingestellte Pausenzeit zurück; „starten“ zählt von dort erneut herunter. Die feste Anzeige wurde auf 180 × 96 px Mindestgröße verdoppelt.
