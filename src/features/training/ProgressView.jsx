@@ -56,14 +56,13 @@ export function ProgressView({data}) {
   const [selectedId,setSelectedId]=useState(null)
   const selected=exercises.find(exercise=>exercise.id===selectedId)
   return <>
-    <div className="section-title"><div><span className="eyebrow">DEIN VERLAUF</span><h2>Fortschritt</h2></div></div>
-    <p className="muted progress-intro">Pro Übung zählt das höchste Gewicht eines abgeschlossenen Trainings. Tippe auf einen Graphen für Wiederholungen und weitere Zeiträume.</p>
+    <div className="feature-heading"><div><span className="eyebrow">DEIN VERLAUF</span><h1>Fortschritt</h1><p>Pro Übung zählt das höchste Gewicht eines abgeschlossenen Trainings. Tippe auf einen Graphen für Wiederholungen und weitere Zeiträume.</p></div></div>
     {exercises.length?<div className="progress-grid">{exercises.map(exercise=>{
       const first=exercise.points[0],last=exercise.points.at(-1)
       const change=exercise.points.length>1?last.weight-first.weight:null
       return <button type="button" className="card progress-card" key={exercise.id} onClick={()=>setSelectedId(exercise.id)}>
         <span className="progress-card-head"><strong>{exercise.name}</strong><span aria-hidden="true">↗</span></span>
-        <span className="progress-value">{weight(last.weight)}</span>
+        <span className="progress-value">{last.weight.toLocaleString('de-DE',{maximumFractionDigits:2})} <span>kg</span></span>
         <ProgressChart points={exercise.points}/>
         <span className="progress-change">{change===null?'Ein Training':`${change>0?'+':''}${weight(change)} seit ${date(first.date)}`}</span>
       </button>

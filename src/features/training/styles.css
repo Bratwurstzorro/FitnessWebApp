@@ -19,18 +19,20 @@
 
 /* Exercise progress uses the same compact previews and expanded time ranges as BodyTrack. */
 .training-surface .tabs button{min-width:0;padding:8px 5px;font-size:clamp(.72rem,2.6vw,.9rem)}
-.training-surface .progress-intro{font-size:.88rem;line-height:1.5;margin:-4px 0 19px}
-.training-surface .shell.progress-shell{max-width:1420px;padding-left:26px;padding-right:26px}
+.training-surface .shell.progress-shell{max-width:1420px;padding:28px 26px 100px}
+.training-surface .feature-heading h1{margin:5px 0 0;font-size:clamp(1.65rem,3vw,2.15rem);letter-spacing:-.04em;line-height:1.1}
+.training-surface .feature-heading p{margin:10px 0 0;color:#6d807d;font-size:.88rem;line-height:1.5}
 .training-surface .progress-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .training-surface .progress-card{display:block;width:100%;min-width:0;text-align:left;overflow:hidden}
 .training-surface .progress-card:hover{border-color:#9abdb5;box-shadow:0 8px 25px #17283214}
-.training-surface .progress-card-head{display:flex;justify-content:space-between;align-items:start;gap:8px;color:#586f6a;font-size:.85rem}
-.training-surface .progress-card-head strong{overflow-wrap:anywhere}
+.training-surface .progress-card-head{display:flex;justify-content:space-between;align-items:start;gap:8px;color:#5f6879;font-size:13px}
+.training-surface .progress-card-head strong{overflow-wrap:anywhere;font-size:13px;font-weight:800}
 .training-surface .progress-card-head>span{color:#8fa39d;font-size:1.2rem}
-.training-surface .progress-value{display:block;margin:12px 0 0;font-weight:800;font-size:1.8rem;letter-spacing:-.04em;color:#172832}
+.training-surface .progress-value{display:block;margin:11px 0 2px;font-weight:850;font-size:31px;letter-spacing:-.04em;color:#172832}
+.training-surface .progress-value span{font-size:14px;font-weight:700;color:#6d807d;letter-spacing:0}
 .training-surface .progress-chart{height:88px;width:100%;margin:5px 0}
 .training-surface .progress-chart.large{height:340px;margin:14px 0 0}
-.training-surface .progress-change{display:block;font-size:.77rem;color:#658079;min-height:20px}
+.training-surface .progress-change{display:block;font-size:11px;color:#658079;min-height:18px}
 .training-surface .progress-empty{height:88px;display:grid;place-items:center;color:#93a29e;font-size:.82rem}
 .training-surface .progress-tooltip{display:grid;gap:5px;border:1px solid #dce5e1;border-radius:12px;background:white;padding:10px 12px;box-shadow:0 8px 24px #17283222}
 .training-surface .progress-tooltip small{color:#6d807d}
@@ -47,5 +49,5 @@
 .training-surface .progress-stats small{font-size:.75rem;color:#6d807d}
 .training-surface .progress-stats strong{font-size:1.12rem;overflow-wrap:anywhere}
 .training-surface .progress-records .set-row{font-size:.84rem}
-@media(max-width:700px){.training-surface .shell.progress-shell{padding-left:14px;padding-right:14px}.training-surface .progress-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.training-surface .progress-card{padding:12px}.training-surface .progress-value{font-size:clamp(1.25rem,6vw,1.8rem)}}
+@media(max-width:700px){.training-surface .shell.progress-shell{padding:18px 14px 100px}.training-surface .progress-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.training-surface .progress-card{padding:12px}.training-surface .progress-value{font-size:clamp(23px,6vw,31px)}}
 @media(max-width:550px){.training-surface .progress-ranges{grid-template-columns:repeat(3,minmax(0,1fr))}.training-surface .progress-stats{grid-template-columns:1fr}.training-surface .progress-dialog{padding:15px}.training-surface .progress-records .set-row{gap:4px}}

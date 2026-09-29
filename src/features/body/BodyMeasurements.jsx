@@ -591,10 +591,10 @@ export function BodyMeasurements({ user, profileOpen, onProfileOpen, onProfileCl
 
   return (
     <main className="app-shell body-surface">
-      <section className="hero">
+      <section className="feature-heading">
         <div>
-          <span className="eyebrow">Dein Profil</span>
-          <h1>Deine Entwicklung auf einen Blick.</h1>
+          <span className="eyebrow">DEINE WERTE</span>
+          <h1>Körpermaße</h1>
           <p>
             {lastDate ? `Letzte Messung am ${formatDate(lastDate)}.` : 'Noch keine Messung gespeichert.'} Du hast bisher{' '}
             <strong>{totalMeasurements}</strong> {totalMeasurements === 1 ? 'Messung' : 'Messungen'} erfasst.
