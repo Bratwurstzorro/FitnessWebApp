@@ -125,3 +125,5 @@
 .training-surface .workout-dialog h2{font-size:1.35rem;margin:0;overflow-wrap:anywhere}
 .training-surface .workout-dialog>.row button{flex-shrink:0}
 .training-surface .workout-dialog>.stack>button{text-align:left}
+.training-surface .exercise-heading{align-items:center;flex-wrap:nowrap;gap:10px}
+.training-surface .exercise-heading h2{min-width:0}

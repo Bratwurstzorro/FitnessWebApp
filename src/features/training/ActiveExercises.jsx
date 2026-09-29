@@ -22,13 +22,13 @@ function ActiveSet({set,index,values,active,busy,onDraft,onSave,onRemove}) {
   </div>
 }
 
-export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,onSaveSet,onAddSet,onRemoveSet,onExerciseChange}) {
+export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,onSaveSet,onAddSet,onRemoveSet,onExerciseChange,onOpenMenu}) {
   const groups=exerciseGroups(currentSets)
   const [selected,setSelected]=useState(()=>firstOpenExercise(groups))
   const group=groups.find(g=>g[0].exercise_id===selected)??groups.find(g=>g[0].exercise_id===firstOpenExercise(groups))
   const selectedId=group?.[0].exercise_id??null
   useEffect(()=>{onExerciseChange?.(selectedId)},[selectedId,onExerciseChange])
-  if(!group)return <div className="card muted">Füge eine Übung hinzu, um das Training fortzusetzen.</div>
+  if(!group)return <div className="card"><div className="row exercise-heading"><h2>Übungen</h2><button type="button" className="workout-menu-button" disabled={busy} aria-label="Übungsaktionen öffnen" aria-haspopup="dialog" onClick={()=>onOpenMenu(null)}>⋯</button></div><p className="muted">Füge eine Übung hinzu, um das Training fortzusetzen.</p></div>
   const first=group[0],activeIndex=group.findIndex(s=>!s.completed_at),activeSet=group[activeIndex]
   const recent=recentExerciseSessions(data,session,first),warmup=warmupSuggestion(recent,first)
   const previous=previousForSet(data.sets,data.sessions,session,first)
@@ -43,7 +43,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
       return <button key={ex.exercise_id} type="button" role="tab" id={`exercise-tab-${ex.exercise_id}`} aria-controls="active-exercise-panel" aria-selected={g===group} title={ex.exercise_name} aria-label={`${ex.exercise_name}${done?' · abgeschlossen':''}`} className={g===group?'selected':''} onClick={()=>setSelected(ex.exercise_id)}>{Array.from(ex.exercise_name.trim()).slice(0,2).join('').toLocaleUpperCase('de-DE')}{done&&<small aria-hidden="true">✓</small>}</button>
     })}</div>
     <article className="card focused-exercise" role="tabpanel" id="active-exercise-panel" aria-labelledby={`exercise-tab-${first.exercise_id}`}>
-      <h2>{first.exercise_name}</h2>
+      <div className="row exercise-heading"><h2>{first.exercise_name}</h2><button type="button" className="workout-menu-button" disabled={busy} aria-label="Übungsaktionen öffnen" aria-haspopup="dialog" onClick={()=>onOpenMenu(first.exercise_id)}>⋯</button></div>
       <p className="focused-target">{group.length} Sätze · Vorgabe: {group.map(s=>s.target_reps).join(' / ')} Wiederholungen</p>
       <details className="warmup-box" key={`warmup-${first.exercise_id}`}><summary><strong>Aufwärmen: {warmup.reference>0?`1 × ${warmup.reps} mit ca. ${kg(warmup.weight)} kg`:'6 leichte Wiederholungen ohne Zusatzgewicht'}</strong></summary>
         <small>{warmup.reference>0?`40 % von ${kg(warmup.reference)} kg (${warmup.fromHistory?'letzter absolvierter Satz':'Planwert, noch keine Historie'}). Auf die Geräteabstufung anpassen und locker ausführen.`:'Wähle eine leichte Variante passend zur Übung.'}</small>

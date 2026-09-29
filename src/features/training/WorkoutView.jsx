@@ -28,7 +28,7 @@ function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,hi
 
 export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,error,perform,onClose,historyMode=false}) {
   const [adding,setAdding]=useState(false),[finishing,setFinishing]=useState(false)
-  const [drafts,setDrafts]=useState({}),[menu,setMenu]=useState(false),[removing,setRemoving]=useState(false)
+  const [drafts,setDrafts]=useState({}),[menu,setMenu]=useState(false),[exerciseMenu,setExerciseMenu]=useState(false)
   const [selectedExercise,setSelectedExercise]=useState(null)
   const groups=[...new Set(currentSets.map(s=>s.exercise_position))].sort((a,b)=>a-b)
 
@@ -36,7 +36,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
   const selectedIndex=groups.indexOf(selectedPosition)
   async function moveSelectedRight() {
     if(selectedIndex<0||selectedIndex>=groups.length-1)return
-    if(await perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,selectedIndex,1))))setMenu(false)
+    if(await perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,selectedIndex,1))))setExerciseMenu(false)
   }
 
   async function saveSet(set,values) {
@@ -88,29 +88,30 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
   }
   async function deleteExercise(first) {
     if(!window.confirm(`Übung „${first.exercise_name}“ samt Sätzen aus diesem Training entfernen?`))return
-    if(await perform(()=>removeWorkoutExercise(session.id,first.exercise_position,user.id)))setRemoving(false)
+    if(await perform(()=>removeWorkoutExercise(session.id,first.exercise_position,user.id)))setExerciseMenu(false)
   }
   async function cancel() {
     if(!window.confirm('Dieses begonnene Training samt allen erfassten Sätzen endgültig löschen? Der Trainingsplan bleibt erhalten.'))return
     if(await perform(()=>cancelWorkout(session.id,user.id))){setTimer(null);onClose(false)}
   }
   return <>
-    {!historyMode&&<div className="section-title workout-heading"><div><span className="eyebrow">LIVE</span><h2>{session.plan_name}</h2><small>{session.day_name}</small></div><button type="button" className="workout-menu-button" disabled={busy} aria-label="Trainingsaktionen öffnen" aria-haspopup="dialog" onClick={()=>setMenu(true)}>⋯</button></div>}
+    {!historyMode&&<div className="section-title workout-heading"><div><span className="eyebrow">LIVE</span><h2>{session.plan_name}</h2><small>{session.day_name}</small></div><button type="button" className="workout-menu-button" disabled={busy} aria-label="Trainingsaktionen öffnen" aria-haspopup="dialog" onClick={()=>setMenu(true)}><span aria-hidden="true">⚙︎</span></button></div>}
     {!historyMode&&menu&&<WorkoutDialog title="Trainingsaktionen" busy={busy} error={error} onClose={()=>setMenu(false)}>
-      <button disabled={busy} onClick={()=>{setMenu(false);setAdding(true)}}>+ Übung hinzufügen</button>
-      <button disabled={busy||!currentSets.length} onClick={()=>{setMenu(false);setRemoving(true)}}>Übung entfernen</button>
-      <button disabled={busy||selectedIndex<0||selectedIndex===groups.length-1} onClick={moveSelectedRight}>Übung nach rechts verschieben</button>
-      <button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button>
       <button className="primary" disabled={busy} onClick={requestFinish}>Training abschließen</button>
+      <button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button>
       <button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button>
     </WorkoutDialog>}
-    {!historyMode&&removing&&<WorkoutDialog title="Übung entfernen" busy={busy} error={error} onClose={()=>setRemoving(false)}>{groups.map(pos=>{const first=currentSets.find(set=>set.exercise_position===pos);return <button key={pos} disabled={busy} onClick={()=>deleteExercise(first)}>{first.exercise_name}</button>})}</WorkoutDialog>}
+    {!historyMode&&exerciseMenu&&<WorkoutDialog title="Übungsaktionen" busy={busy} error={error} onClose={()=>setExerciseMenu(false)}>
+      <button disabled={busy} onClick={()=>{setExerciseMenu(false);setAdding(true)}}>Übung hinzufügen</button>
+      <button disabled={busy||selectedIndex<0} onClick={()=>deleteExercise(currentSets.find(set=>set.exercise_id===selectedExercise))}>Übung entfernen</button>
+      <button disabled={busy||selectedIndex<0||selectedIndex===groups.length-1} onClick={moveSelectedRight}>Übung nach rechts verschieben</button>
+    </WorkoutDialog>}
 
     {historyMode&&<p className="notice">Änderungen werden einzeln gespeichert und aktualisieren deinen Fortschritt sowie die nächsten Trainingsempfehlungen. Dein Trainingsplan bleibt unverändert.</p>}
     {historyMode&&<p className="muted">{session.plan_name} · begonnen {new Date(session.started_at).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})}</p>}
     {!historyMode&&<ActiveExercises data={data} session={session} currentSets={currentSets} drafts={drafts} setDrafts={setDrafts} busy={busy} onSaveSet={saveSet} onAddSet={addSet}
       onRemoveSet={set=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
-      onExerciseChange={setSelectedExercise}/>}
+      onExerciseChange={setSelectedExercise} onOpenMenu={id=>{setSelectedExercise(id);setExerciseMenu(true)}}/>}
     {historyMode&&<div className="stack">{groups.map((pos,groupIndex)=>{
       const group=currentSets.filter(s=>s.exercise_position===pos).sort((a,b)=>a.set_position-b.set_position)
       const firstPrevious=previousForSet(data.sets,data.sessions,session,group[0])
