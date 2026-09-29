@@ -19,7 +19,7 @@ export function RestTimer({initialSeconds,idleSeconds=120}) {
   function adjust(seconds) {setNow(Date.now());setClock(current=>adjustTimer(current,seconds))}
   return <>
     <button type="button" className={`floating-timer ${green?'running':'idle'}`} aria-haspopup="dialog" aria-label={clock.active?`Pausentimer ${time}, Steuerung öffnen`:'Pausentimer starten, Steuerung öffnen'} onClick={()=>setOpen(true)}>
-      {clock.active?<span>{time}</span>:<svg aria-hidden="true" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>}
+      {clock.active?<span>{time}</span>:<svg aria-hidden="true" width="37.5" height="37.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>}
     </button>
     {open&&<WorkoutDialog title="Pausentimer" onClose={()=>setOpen(false)}>
       <div className="timer-popup-controls"><button type="button" onClick={()=>adjust(-15)} aria-label="15 Sekunden abziehen">−</button><strong role="timer">{time}</strong><button type="button" onClick={()=>adjust(15)} aria-label="15 Sekunden hinzufügen">+</button></div>
