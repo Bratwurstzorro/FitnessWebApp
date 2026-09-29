@@ -28,7 +28,7 @@ function SetEditor({initial,onSave,onCancel}) {
     <button className="primary">Speichern</button><button type="button" onClick={onCancel}>Abbrechen</button></form>
 }
 
-export function TrainingArea({user,page,onNavigate}) {
+export function TrainingArea({user,page,onNavigate,onActiveChange}) {
   const [data,setData]=useState(empty),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('')
   const [planId,setPlanId]=useState(null),[dayId,setDayId]=useState(null),[editing,setEditing]=useState(null),[timer,setTimer]=useState(null)
   const [activeSession,setActiveSession]=useState(null),[historyEdit,setHistoryEdit]=useState(null),[preview,setPreview]=useState(null)
@@ -38,6 +38,7 @@ export function TrainingArea({user,page,onNavigate}) {
   const plan=data.plans.find(p=>p.id===planId),day=data.days.find(d=>d.id===dayId)
   const days=data.days.filter(d=>d.plan_id===planId),exercises=data.exercises.filter(e=>e.day_id===dayId)
   const session=activeSession && data.sessions.find(s=>s.id===activeSession)
+  useEffect(()=>{onActiveChange?.(!!session)},[!!session,onActiveChange])
   const currentSets=useMemo(()=>data.sets.filter(s=>s.session_id===activeSession),[data.sets,activeSession])
   const history=data.sessions.filter(s=>s.finished_at)
   async function begin(dayChoice) {
@@ -49,7 +50,7 @@ export function TrainingArea({user,page,onNavigate}) {
   }
   const editingAt=(kind,id)=>editing?.kind===kind && editing.id===id
   if(loading) return <div className="training-surface"><main className="shell">Training wird geladen …</main></div>
-  return <div className="training-surface"><div className={`shell ${page==='progress'?'progress-shell':''}`}>
+  return <div className="training-surface"><div className={`shell ${page==='progress'?'progress-shell':''} ${page==='workout'&&session?'active-workout-shell':''}`}>
     {error&&<div className="notice error" role="alert">{error}</div>}
     {page==='plans'&&<>
       <div className="section-title"><div><span className="eyebrow">DEINE ROUTINE</span><h2>{day?day.name:plan?plan.name:'Trainingspläne'}</h2></div>{day?<button onClick={()=>setDayId(null)}>← Tage</button>:plan?<button onClick={()=>setPlanId(null)}>← Pläne</button>:null}</div>
@@ -64,7 +65,7 @@ export function TrainingArea({user,page,onNavigate}) {
         {editingAt('newtarget',ex.id)?<SetEditor key={`new-${ex.id}-${editing.initial.position}`} initial={editing.initial} onCancel={()=>setEditing(null)} onSave={values=>perform(async()=>{await insert('training_targets',{user_id:user.id,exercise_id:ex.id,position:editing.initial.position,...values});setEditing(null)})}/>:<button className="link" disabled={busy} onClick={()=>setEditing({kind:'newtarget',id:ex.id,initial:nextPlanSet(data.targets,ex.id)})}>+ Satz hinzufügen</button>}</article>)}
         {editingAt('newexercise',null)?<ExercisePicker catalog={data.catalog} busy={busy} onCancel={()=>setEditing(null)} onChoose={choice=>perform(async()=>{const catalog=choice.id?choice:await ensureCatalogExercise(choice.name,user.id);await insert('training_exercises',{user_id:user.id,day_id:day.id,name:catalog.name,catalog_exercise_id:catalog.id,rest_seconds:choice.rest_seconds,position:exercises.length?Math.max(...exercises.map(e=>e.position))+1:0});setEditing(null)})}/>:<button className="add" onClick={()=>setEditing({kind:'newexercise',id:null})}>+ Übung hinzufügen</button>}</div>}
     </>}
-    {page==='workout'&&<><div className="section-title"><div><span className="eyebrow">LIVE</span><h2>{session?session.day_name:'Training starten'}</h2></div></div>
+    {page==='workout'&&<>{!session&&<div className="section-title"><div><span className="eyebrow">LIVE</span><h2>Training starten</h2></div></div>}
       {!session&&<div className="stack">{data.plans.flatMap(p=>data.days.filter(d=>d.plan_id===p.id).map(d=><button className="card row training-choice" key={d.id} disabled={busy} aria-haspopup="dialog" onClick={()=>{setError('');setPreview({plan:p,day:d})}}><span><strong>{d.name}</strong><small className="block">{p.name}</small></span><span aria-hidden="true">›</span></button>))}{data.sessions.filter(s=>!s.finished_at).map(s=><article className="card row" key={s.id}><div><strong>{s.day_name}</strong><small className="block">Begonnen {date(s.started_at)}</small></div><button onClick={()=>{setActiveSession(s.id);setTimer(null)}}>Fortsetzen</button></article>)}</div>}
       {session&&<WorkoutView key={session.id} user={user} data={data} session={session} currentSets={currentSets} timer={timer} setTimer={setTimer} busy={busy} error={error} perform={perform} onClose={finished=>{setActiveSession(null);if(finished)onNavigate('history')}}/>}
     </>}

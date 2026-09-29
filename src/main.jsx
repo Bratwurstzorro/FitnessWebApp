@@ -99,6 +99,7 @@ function App() {
   const [loading,setLoading]=useState(true)
   const [page,setPage]=useState(pageFromUrl)
   const [profileOpen,setProfileOpen]=useState(false)
+  const [activeWorkout,setActiveWorkout]=useState(false)
 
   useEffect(()=>{
     let mounted=true
@@ -125,14 +126,14 @@ function App() {
   if(loading)return <div className="app-loading">BodyTrack wird geladen …</div>
   if(!session)return <AuthScreen />
   return <div className="unified-app">
-    <header className="unified-header">
+    {!(page==='workout'&&activeWorkout)&&<><header className="unified-header">
       <div className="brand"><span className="brand-mark">BT</span><div><strong>BodyTrack</strong><span>Training & Körpermaße</span></div></div>
       <div className="unified-actions"><button className="secondary-button" onClick={()=>{navigate('body');setProfileOpen(true)}}>Profil</button><button className="secondary-button" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
     </header>
     <nav className="unified-nav" aria-label="Hauptnavigation">
       {pages.map(item=><button type="button" key={item.id} className={page===item.id?'active':''} aria-current={page===item.id?'page':undefined} onClick={()=>navigate(item.id)}><span className="nav-long">{item.label}</span><span className="nav-short">{item.short}</span></button>)}
-    </nav>
-    <div className="unified-training" hidden={page==='body'}><TrainingArea key={session.user.id} user={session.user} page={page} onNavigate={navigate}/></div>
+    </nav></>}
+    <div className="unified-training" hidden={page==='body'}><TrainingArea key={session.user.id} user={session.user} page={page} onNavigate={navigate} onActiveChange={setActiveWorkout}/></div>
     {page==='body'&&<Suspense fallback={<div className="app-loading">Körpermaße werden geladen …</div>}><BodyMeasurements user={session.user} profileOpen={profileOpen} onProfileOpen={()=>setProfileOpen(true)} onProfileClose={()=>setProfileOpen(false)}/></Suspense>}
   </div>
 }

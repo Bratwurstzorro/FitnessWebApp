@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { exerciseGroups,firstOpenExercise,recentExerciseSessions,warmupSuggestion,nextExerciseAfterSet } from './trainingFocus.js'
+import { exerciseGroups,firstOpenExercise,recentExerciseSessions,warmupSuggestion,nextExerciseAfterSet,canOfferPlanUpdate } from './trainingFocus.js'
 
 test('resumes the first unfinished exercise and keeps sets in order',()=>{
  const rows=[{exercise_id:'b',exercise_position:1,set_position:2,completed_at:null},{exercise_id:'a',exercise_position:0,set_position:0,completed_at:'done'},{exercise_id:'b',exercise_position:1,set_position:0,completed_at:'done'}]
@@ -34,4 +34,11 @@ test('advances only after the final new confirmation and skips finished exercise
  assert.equal(nextExerciseAfterSet([[open,{id:'a3',exercise_id:'a',completed_at:null}],groups[2]],open),null)
  assert.equal(nextExerciseAfterSet([[open]],open),null)
  assert.equal(nextExerciseAfterSet([groups[0],groups[2]],groups[2][0]),'a')
+})
+
+test('incomplete and empty workouts finish as history only, without a plan update question',()=>{
+ assert.equal(canOfferPlanUpdate([]),false)
+ assert.equal(canOfferPlanUpdate([{completed_at:'done'},{completed_at:null}]),false)
+ assert.equal(canOfferPlanUpdate([{completed_at:null}]),false)
+ assert.equal(canOfferPlanUpdate([{completed_at:'done'},{completed_at:'done'}]),true)
 })

@@ -29,3 +29,7 @@ export function nextExerciseAfterSet(groups,set) {
   const next=[...groups.slice(index+1),...groups.slice(0,index)].find(group=>group.some(row=>!row.completed_at))
   return next?.[0].exercise_id??null
 }
+
+export function canOfferPlanUpdate(sets) {
+  return sets.length>0&&sets.every(set=>!!set.completed_at)
+}

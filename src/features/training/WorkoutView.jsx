@@ -9,6 +9,8 @@ import { ExercisePicker } from './ExercisePicker'
 import { OrderButtons } from './OrderButtons'
 import { sessionOrder } from './order'
 import { ActiveExercises } from './ActiveExercises'
+import { WorkoutDialog } from './WorkoutDialog'
+import { canOfferPlanUpdate } from './trainingFocus'
 
 function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,historyMode}) {
   const advice = recommendation(previous,value.target_reps,value.target_weight_kg)
@@ -26,7 +28,7 @@ function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,hi
 
 export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,error,perform,onClose,historyMode=false}) {
   const [adding,setAdding]=useState(false),[finishing,setFinishing]=useState(false)
-  const [drafts,setDrafts]=useState({})
+  const [drafts,setDrafts]=useState({}),[menu,setMenu]=useState(false),[removing,setRemoving]=useState(false)
   const groups=[...new Set(currentSets.map(s=>s.exercise_position))].sort((a,b)=>a-b)
 
   async function saveSet(set,values) {
@@ -71,16 +73,34 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       : update('training_sessions',session.id,user.id,{finished_at:new Date().toISOString()}))
     if(success){setFinishing(false);setTimer(null);onClose(true)}
   }
+  function requestFinish() {
+    setMenu(false)
+    if(canOfferPlanUpdate(currentSets))setFinishing(true)
+    else finish(false)
+  }
+  async function deleteExercise(first) {
+    if(!window.confirm(`Übung „${first.exercise_name}“ samt Sätzen aus diesem Training entfernen?`))return
+    if(await perform(()=>removeWorkoutExercise(session.id,first.exercise_position,user.id)))setRemoving(false)
+  }
   async function cancel() {
     if(!window.confirm('Dieses begonnene Training samt allen erfassten Sätzen endgültig löschen? Der Trainingsplan bleibt erhalten.'))return
     if(await perform(()=>cancelWorkout(session.id,user.id))){setTimer(null);onClose(false)}
   }
   return <>
+    {!historyMode&&<div className="section-title workout-heading"><div><span className="eyebrow">LIVE</span><h2>{session.plan_name}</h2><small>{session.day_name}</small></div><button type="button" className="workout-menu-button" disabled={busy} aria-label="Trainingsaktionen öffnen" aria-haspopup="dialog" onClick={()=>setMenu(true)}>⋯</button></div>}
+    {!historyMode&&menu&&<WorkoutDialog title="Trainingsaktionen" busy={busy} error={error} onClose={()=>setMenu(false)}>
+      <button disabled={busy} onClick={()=>{setMenu(false);setAdding(true)}}>+ Übung hinzufügen</button>
+      <button disabled={busy||!currentSets.length} onClick={()=>{setMenu(false);setRemoving(true)}}>Übung entfernen</button>
+      <button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button>
+      <button className="primary" disabled={busy} onClick={requestFinish}>Training abschließen</button>
+      <button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button>
+    </WorkoutDialog>}
+    {!historyMode&&removing&&<WorkoutDialog title="Übung entfernen" busy={busy} error={error} onClose={()=>setRemoving(false)}>{groups.map(pos=>{const first=currentSets.find(set=>set.exercise_position===pos);return <button key={pos} disabled={busy} onClick={()=>deleteExercise(first)}>{first.exercise_name}</button>})}</WorkoutDialog>}
+
     {historyMode&&<p className="notice">Änderungen werden einzeln gespeichert und aktualisieren deinen Fortschritt sowie die nächsten Trainingsempfehlungen. Dein Trainingsplan bleibt unverändert.</p>}
     {historyMode&&<p className="muted">{session.plan_name} · begonnen {new Date(session.started_at).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})}</p>}
     {!historyMode&&<ActiveExercises data={data} session={session} currentSets={currentSets} drafts={drafts} setDrafts={setDrafts} busy={busy} onSaveSet={saveSet} onAddSet={addSet}
       onRemoveSet={set=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
-      onRemoveExercise={first=>{if(window.confirm(`Übung „${first.exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,first.exercise_position,user.id))}}
       onMoveExercise={(index,direction)=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,index,direction)))}/>}
     {historyMode&&<div className="stack">{groups.map((pos,groupIndex)=>{
       const group=currentSets.filter(s=>s.exercise_position===pos).sort((a,b)=>a.set_position-b.set_position)
@@ -95,10 +115,8 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
         </div><button className="link" disabled={busy} onClick={()=>addSet(group)}>+ Satz hinzufügen</button>
       </article>
     })}</div>}
-    {adding?<ExercisePicker catalog={data.catalog} excludeIds={currentSets.map(set=>set.catalog_exercise_id)} busy={busy} onChoose={addExercise} onCancel={()=>setAdding(false)}/>:<button className="add workout-add" onClick={()=>setAdding(true)}>+ Übung hinzufügen</button>}
-    {!historyMode&&<>
-    <div className="footer-actions"><button disabled={busy} onClick={()=>{setTimer(null);onClose(false)}}>Später fortsetzen</button><button className="cancel-button" disabled={busy} onClick={cancel}>Training abbrechen</button><button className="primary" disabled={busy||!currentSets.length||!currentSets.every(s=>s.completed_at)} onClick={()=>setFinishing(true)}>Training abschließen</button></div>
-    </>}
+    {historyMode&&(adding?<ExercisePicker catalog={data.catalog} excludeIds={currentSets.map(set=>set.catalog_exercise_id)} busy={busy} onChoose={addExercise} onCancel={()=>setAdding(false)}/>:<button className="add workout-add" onClick={()=>setAdding(true)}>+ Übung hinzufügen</button>)}
+    {!historyMode&&adding&&<WorkoutDialog title="Übung hinzufügen" busy={busy} error={error} onClose={()=>setAdding(false)}><ExercisePicker catalog={data.catalog} excludeIds={currentSets.map(set=>set.catalog_exercise_id)} busy={busy} onChoose={addExercise} onCancel={()=>setAdding(false)}/></WorkoutDialog>}
     {historyMode&&<div className="footer-actions"><button className="primary" disabled={busy} onClick={()=>{if(currentSets.some(s=>!s.completed_at||drafts[s.id])&&!window.confirm('Es gibt noch nicht gespeicherte Änderungen oder Sätze. Nur gespeicherte Werte werden im Fortschritt berücksichtigt. Bearbeitung trotzdem beenden?'))return;onClose(false)}}>Bearbeitung beenden</button></div>}
     {!historyMode&&<div className="bottom-timer">{timer?<RestTimer key={timer.key} initialSeconds={timer.seconds} onSkip={()=>setTimer(null)}/>:<div className="timer timer-idle"><span>Pause startet nach Satzbestätigung</span></div>}</div>}
     {finishing&&<div className="dialog-backdrop" role="presentation"><div className="card finish-dialog" role="dialog" aria-modal="true" aria-labelledby="finish-heading">
