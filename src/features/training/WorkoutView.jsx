@@ -110,7 +110,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
     {historyMode&&<p className="notice">Änderungen werden einzeln gespeichert und aktualisieren deinen Fortschritt sowie die nächsten Trainingsempfehlungen. Dein Trainingsplan bleibt unverändert.</p>}
     {historyMode&&<p className="muted">{session.plan_name} · begonnen {new Date(session.started_at).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})}</p>}
     {!historyMode&&<ActiveExercises data={data} session={session} currentSets={currentSets} drafts={drafts} setDrafts={setDrafts} busy={busy} onSaveSet={saveSet} onAddSet={addSet}
-      onRemoveSet={set=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
+      onRemoveSet={set=>{if(window.confirm('Diesen Satz wirklich löschen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
       onExerciseChange={setSelectedExercise} onOpenMenu={id=>{setSelectedExercise(id);setExerciseMenu(true)}}/>}
     {historyMode&&<div className="stack">{groups.map((pos,groupIndex)=>{
       const group=currentSets.filter(s=>s.exercise_position===pos).sort((a,b)=>a.set_position-b.set_position)
@@ -120,7 +120,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
         <div className="row"><div><h3>{group[0].exercise_name}</h3><small>Pause {group[0].rest_seconds} Sekunden</small></div><div className="actions"><OrderButtons index={groupIndex} count={groups.length} busy={busy} label={group[0].exercise_name} onMove={direction=>perform(()=>saveSessionOrder(session.id,sessionOrder(currentSets,groupIndex,direction)))}/><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${group[0].exercise_name}“ samt Sätzen aus diesem Training entfernen?`))perform(()=>removeWorkoutExercise(session.id,pos,user.id))}}>Übung entfernen</button></div></div>
         <div className="stack sets">{group.map((set,index)=><WorkoutSet key={set.id} value={set} index={index} values={defaults[index]} onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))}
           historyMode={historyMode} previous={previousForSet(data.sets,data.sessions,session,set)} busy={busy}
-          onRemove={()=>{if(!set.completed_at||window.confirm('Abgeschlossenen Satz wirklich entfernen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
+          onRemove={()=>{if(window.confirm('Diesen Satz wirklich löschen?'))perform(()=>remove('training_session_sets',set.id,user.id))}}
           onDone={values=>saveSet(set,values)}/>)}
         </div><button className="link" disabled={busy} onClick={()=>addSet(group)}>+ Satz hinzufügen</button>
       </article>
