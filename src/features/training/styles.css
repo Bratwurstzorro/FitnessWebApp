@@ -158,3 +158,13 @@
 .training-surface .rir-help{font-size:.75rem;color:#60736c;margin:0 0 12px}
 .training-surface .rir-help small{display:block;margin-top:6px;line-height:1.5}
 @media(max-width:420px){.training-surface .focused-set-row,.training-surface .focused-set-columns{grid-template-columns:42px minmax(0,1fr) minmax(0,1fr) 48px 34px 20px;gap:4px}.training-surface .focused-set-row input{padding:8px 4px;font-size:.85rem}.training-surface .focused-set-row>strong{font-size:.7rem}}
+.training-surface .history-calendar{margin-bottom:18px}
+.training-surface .history-calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.training-surface .history-calendar-heading h3{margin:0;text-align:center;font-size:1.05rem}
+.training-surface .history-calendar-heading button{width:44px;padding:4px;font-size:1.6rem;flex-shrink:0}
+.training-surface .history-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.training-surface .history-calendar-weekday{padding:6px 0;color:#6d807d;font-size:.78rem;font-weight:700}
+.training-surface .history-calendar-day{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:43px;border-radius:10px;font-variant-numeric:tabular-nums;font-size:.92rem}
+.training-surface .history-calendar-day.is-today{background:#eaf5f1;color:#126758;font-weight:750;box-shadow:inset 0 0 0 1px #9abdb5}
+.training-surface .history-calendar-dot{width:5px;height:5px;border-radius:50%;background:transparent}
+.training-surface .history-calendar-dot.is-trained{background:#16806b}
