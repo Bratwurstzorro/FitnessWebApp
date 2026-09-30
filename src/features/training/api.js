@@ -81,7 +81,8 @@ export async function addWorkoutExercise(userId, sessionId, exercise, targets, p
     user_id:userId,session_id:sessionId,exercise_id:exercise.id,
     catalog_exercise_id:exercise.catalog_exercise_id,exercise_name:exercise.name,
     exercise_position:position,set_position:index,rest_seconds:exercise.rest_seconds,
-    target_weight_kg:target.weight_kg,target_reps:target.reps,
+    target_weight_kg:target.weight_kg,target_reps:exercise.rep_min??10,
+    rep_min:exercise.rep_min??10,rep_max:exercise.rep_max??10,
   }))
   unwrap(await supabase.from('training_session_sets').insert(rows))
 }
@@ -100,7 +101,8 @@ export async function startSession(userId, plan, day, exercises, targets) {
       user_id:userId, session_id:session.id, exercise_id:exercise.id, exercise_name:exercise.name,
       catalog_exercise_id:exercise.catalog_exercise_id,
       exercise_position:exercisePosition, set_position:setPosition, rest_seconds:exercise.rest_seconds,
-      target_weight_kg:target.weight_kg, target_reps:target.reps,
+      target_weight_kg:target.weight_kg, target_reps:exercise.rep_min??10,
+      rep_min:exercise.rep_min??10,rep_max:exercise.rep_max??10,
     })))
     if (!rows.length) throw new Error('Füge zuerst mindestens einen Satz hinzu.')
     unwrap(await supabase.from('training_session_sets').insert(rows))

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
 import { workoutValues } from './setDefaults'
-import { previousForSet, recommendation, historicalSetValues } from './progression'
+import { rangeText } from './repRange'
+import { previousForSet, rangeRecommendation, historicalSetValues } from './progression'
 import { exerciseGroups, firstOpenExercise, recentExerciseSessions, warmupSuggestion, nextExerciseAfterSet } from './trainingFocus'
 
 const kg=value=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(value)
@@ -35,7 +36,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
   const prior=activeIndex>0?group[activeIndex-1]:null
   const historical=activeSet?previousForSet(data.sets,data.sessions,session,activeSet):null
   const baseline=historical??(prior?.completed_at?prior:null)
-  const advice=activeSet?recommendation(baseline,activeSet.target_reps,activeSet.target_weight_kg):null
+  const advice=activeSet?rangeRecommendation(data,session,group,activeSet,baseline):null
   const next=groups.find(g=>g!==group&&g.some(s=>!s.completed_at))
   return <>
     <div className="exercise-tabs" role="tablist" aria-label="Übungen im Training">{groups.map(g=>{
@@ -44,7 +45,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
     })}</div>
     <article className="card focused-exercise" role="tabpanel" id="active-exercise-panel" aria-labelledby={`exercise-tab-${first.exercise_id}`}>
       <div className="row exercise-heading"><h2>{first.exercise_name}</h2><button type="button" className="workout-menu-button" disabled={busy} aria-label="Übungsaktionen öffnen" aria-haspopup="dialog" onClick={()=>onOpenMenu(first.exercise_id)}>⋯</button></div>
-      <p className="focused-target">{group.length} Sätze · Vorgabe: {group.map(s=>s.target_reps).join(' / ')} Wiederholungen</p>
+      <p className="focused-target">{group.length} Sätze · Vorgabe: {rangeText(first)} Wiederholungen</p>
       <details className="warmup-box" key={`warmup-${first.exercise_id}`}><summary><strong>Aufwärmen: {warmup.reference>0?`1 × ${warmup.reps} mit ca. ${kg(warmup.weight)} kg`:'6 leichte Wiederholungen ohne Zusatzgewicht'}</strong></summary>
         <small>{warmup.reference>0?`40 % von ${kg(warmup.reference)} kg (${warmup.fromHistory?'letzter absolvierter Satz':'Planwert, noch keine Historie'}). Auf die Geräteabstufung anpassen und locker ausführen.`:'Wähle eine leichte Variante passend zur Übung.'}</small>
         <small>Ribeiro et al. (2020) untersuchten bei Bankdrücken und Kniebeugen u. a. 6 Wiederholungen mit 40 % der Trainingslast. Die Übertragung auf dein letztes Satzgewicht und andere Übungen ist eine praktische App-Regel. Bei schweren Arbeitsgewichten können weitere Aufwärmsätze nötig sein. <a href="https://pubmed.ncbi.nlm.nih.gov/32971729/" target="_blank" rel="noreferrer">Studie</a></small>
@@ -53,7 +54,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
       <div className="focused-sets">{group.map((set,index)=><ActiveSet key={set.id} set={set} index={index} values={defaults[index]} active={index===activeIndex} busy={busy}
         onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))} onSave={async values=>{const nextId=nextExerciseAfterSet(groups,set);if(await onSaveSet(set,values)){if(nextId)setSelected(nextId)}}} onRemove={()=>onRemoveSet(set)}/>)}</div>
       <button className="link" disabled={busy} onClick={()=>onAddSet(group)}>+ Satz hinzufügen</button>
-      {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong></summary><small>{advice.detail}</small><small>{historical?`Zuletzt Satz #${activeIndex+1}: ${historical.actual_weight_kg} kg × ${historical.actual_reps}`:prior?.completed_at?`Basis ohne Historie: heute Satz #${activeIndex} · ${prior.actual_weight_kg} kg × ${prior.actual_reps}`:'Basis: dein Trainingsplan'}</small><small>Laststeigerungen von 2–10 % bei 1–2 Wiederholungen über dem Ziel sind eine ACSM-Orientierung; die konkrete Empfehlung pro Satz ist eine App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
+      {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong></summary><small>{advice.detail}</small><small>{historical?`Zuletzt Satz #${activeIndex+1}: ${historical.actual_weight_kg} kg × ${historical.actual_reps}`:prior?.completed_at?`Basis ohne Historie: heute Satz #${activeIndex} · ${prior.actual_weight_kg} kg × ${prior.actual_reps}`:'Basis: dein Trainingsplan'}</small><small>Doppelte Progression: zunächst Wiederholungen innerhalb der Spanne steigern; wenn alle Vergleichssätze die Obergrenze erreicht haben, eine kleine Laststeigerung prüfen. Diese konkrete Regel ist eine praktische App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
       <aside className="recent-training"><strong>Die letzten zwei Trainings</strong>{recent.length?recent.map(previous=><div key={previous.id}><p>{date(previous.finished_at)} · {previous.plan_name} · {previous.day_name}</p>{previous.sets.map((set,index)=><div className="recent-set" key={set.id}><span>Satz #{index+1}</span><span>{set.actual_weight_kg} kg</span><span>{set.actual_reps} Wdh.</span></div>)}</div>):<p>Noch keine abgeschlossenen Trainings für diese Übung.</p>}</aside>
     </article>
   </>

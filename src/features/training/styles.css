@@ -137,3 +137,7 @@
 .training-surface .workout-dialog .timer-toggle{text-align:center}
 
 .training-surface .shell.active-workout-shell{padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))}
+
+.training-surface .rep-range-editor{margin:12px 0;display:grid;gap:6px;font-size:.9rem}
+.training-surface .rep-range-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.training-surface .rep-range-controls input{width:64px;min-width:0}

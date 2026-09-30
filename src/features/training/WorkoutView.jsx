@@ -60,6 +60,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       const created=await insert('training_session_sets',{
         user_id:user.id,session_id:session.id,exercise_id:last.exercise_id,catalog_exercise_id:last.catalog_exercise_id,exercise_name:last.exercise_name,
         exercise_position:last.exercise_position,set_position:Math.max(...group.map(s=>s.set_position))+1,
+        rep_min:last.rep_min??10,rep_max:last.rep_max??10,
         rest_seconds:last.rest_seconds,target_weight_kg:parseNumeric(values.weight),target_reps:parseNumeric(values.reps),
       })
       setDrafts(current=>({...current,[created.id]:values}))
@@ -73,7 +74,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
       const source=data.exercises.find(ex=>ex.catalog_exercise_id===catalog.id && ex.day_id===session.source_day_id)
         ?? data.exercises.find(ex=>ex.catalog_exercise_id===catalog.id)
       const reuseSource=source?.day_id===session.source_day_id && !currentSets.some(set=>set.exercise_id===source.id)
-      const exercise={id:reuseSource?source.id:crypto.randomUUID(),catalog_exercise_id:catalog.id,name:catalog.name,rest_seconds:choice.rest_seconds}
+      const exercise={id:reuseSource?source.id:crypto.randomUUID(),catalog_exercise_id:catalog.id,name:catalog.name,rest_seconds:choice.rest_seconds,rep_min:source?.rep_min??10,rep_max:source?.rep_max??10}
       const targets=source?data.targets.filter(target=>target.exercise_id===source.id):[]
       await addWorkoutExercise(user.id,session.id,exercise,targets,position)
     })
@@ -138,7 +139,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
     {historyMode&&<div className="footer-actions"><button className="primary" disabled={busy} onClick={()=>{if(currentSets.some(s=>!s.completed_at||drafts[s.id])&&!window.confirm('Es gibt noch nicht gespeicherte Änderungen oder Sätze. Nur gespeicherte Werte werden im Fortschritt berücksichtigt. Bearbeitung trotzdem beenden?'))return;onClose(false)}}>Bearbeitung beenden</button></div>}
     {!historyMode&&<RestTimer key={timer?.key??'idle'} initialSeconds={timer?.seconds} userId={user.id} sessionId={session.id} idleSeconds={currentSets.find(set=>set.exercise_id===selectedExercise)?.rest_seconds??120}/>}
     {finishing&&<div className="dialog-backdrop" role="presentation"><div className="card finish-dialog" role="dialog" aria-modal="true" aria-labelledby="finish-heading">
-      <h2 id="finish-heading">Plan übernehmen?</h2><p>Soll dieses Training mit den heutigen Übungen, Sätzen, Gewichten und Wiederholungen deinen bisherigen Trainingstag im Plan ersetzen? Deine Historie wird in beiden Fällen gespeichert.</p>
+      <h2 id="finish-heading">Plan übernehmen?</h2><p>Soll dieses Training mit den heutigen Übungen, Sätzen und Gewichten (die Wiederholungsspannen bleiben erhalten) deinen bisherigen Trainingstag im Plan ersetzen? Deine Historie wird in beiden Fällen gespeichert.</p>
       {error&&<p className="notice error" role="alert">{error}</p>}
       {!data.days.some(d=>d.id===session.source_day_id&&d.plan_id===session.source_plan_id)&&<p className="notice">Der ursprüngliche Trainingstag ist nicht mehr vorhanden. Speichere nur die Historie.</p>}
       <div className="stack"><button className="primary" disabled={busy||!data.days.some(d=>d.id===session.source_day_id&&d.plan_id===session.source_plan_id)} onClick={()=>finish(true)}>Ja, im Plan übernehmen</button><button disabled={busy} onClick={()=>finish(false)}>Nein, nur Historie speichern</button><button disabled={busy} onClick={()=>setFinishing(false)}>Zurück zum Training</button></div>

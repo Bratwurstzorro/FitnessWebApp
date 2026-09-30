@@ -1,3 +1,4 @@
+import { repRange } from './repRange.js'
 // The ACSM 2009 position stand recommends increasing load 2–10% once a lifter
 // exceeds the target by 1–2 reps. Exact increments and per-set decisions are
 // practical app heuristics, not validated individual prescriptions.
@@ -35,4 +36,17 @@ export function historicalSetValues(data,session,set) {
   const previous=previousForSet(data.sets,data.sessions,session,set)
   return previous?{weight:previous.actual_weight_kg,reps:previous.actual_reps}
     :{weight:set.target_weight_kg,reps:set.target_reps}
+}
+
+// Keep the plan range stable and compare each set with its own last performance.
+export function rangeRecommendation(data,session,group,set,previous) {
+  const {min,max}=repRange(set)
+  const kg=n=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:2}).format(n)
+  const weight=Number(previous?.actual_weight_kg??set.target_weight_kg)
+  const history=group.map(row=>previousForSet(data.sets,data.sessions,session,row))
+  const sameSession=history.length>0&&history.every(row=>row&&row.session_id===history[0].session_id)
+  const increase=weight>0&&sameSession&&history.every((row,index)=>Number(row.actual_reps)>=repRange(group[index]).max)
+  if(increase)return {label:`${kg(weight*1.02)}–${kg(weight*1.05)} kg mit ${min} bis ${max} Wiederholungen prüfen`,detail:'Im letzten Vergleichstraining haben alle Sätze die Obergrenze erreicht. Prüfe 2–5 % mehr Gewicht, passend zur Geräteabstufung; bleibe mit sauberer Technik innerhalb der Spanne.'}
+  const reps=previous?Math.min(max,Math.max(min,Number(previous.actual_reps)+1)):min
+  return {label:`${kg(weight)} kg halten, ${reps} Wiederholungen versuchen`,detail:previous&&Number(previous.actual_reps)>=max?'Die Obergrenze dieses Satzes ist erreicht. Festige sie, während die übrigen Sätze aufholen.':'Steigere die Wiederholungen innerhalb deiner geplanten Spanne, soweit es mit sauberer Technik möglich ist.'}
 }

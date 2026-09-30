@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { ensureCatalogExercise, insert, loadTraining, remove, startSession, update, savePlanOrder } from './api'
 import { WorkoutView } from './WorkoutView'
 import { ExercisePicker } from './ExercisePicker'
+import { RepRangeEditor } from './RepRangeEditor'
+import { rangeText } from './repRange'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
 import { nextPlanSet } from './setDefaults'
@@ -22,10 +24,9 @@ function PromptForm({label,value='',onSave,onCancel}) {
 }
 
 function SetEditor({initial,onSave,onCancel}) {
-  const [weight,setWeight]=useState(String(initial?.weight_kg??0)),[reps,setReps]=useState(String(initial?.reps??10))
-  return <form className="inline-form" onSubmit={e=>{e.preventDefault();onSave({weight_kg:number(weight),reps:number(reps)})}}>
+  const [weight,setWeight]=useState(String(initial?.weight_kg??0))
+  return <form className="inline-form" onSubmit={e=>{e.preventDefault();onSave({weight_kg:number(weight),reps:initial?.reps??10})}}>
     <label>kg<NumericInput kind="weight" max="9999" value={weight} onChange={setWeight}/></label>
-    <label>Wdh.<NumericInput kind="reps" max="1000" value={reps} onChange={setReps}/></label>
     <button className="primary">Speichern</button><button type="button" onClick={onCancel}>Abbrechen</button></form>
 }
 
@@ -63,7 +64,8 @@ export function TrainingArea({user,page,onNavigate,onActiveChange}) {
       {day&&<div className="stack">{exercises.map((ex,exIndex)=><article className="card" key={ex.id}><div className="row"><div><strong>{ex.name}</strong><small className="block">Pause: {ex.rest_seconds} Sekunden</small></div><div className="actions"><OrderButtons index={exIndex} count={exercises.length} busy={busy} label={ex.name} onMove={direction=>perform(()=>savePlanOrder('training_exercises',moved(exercises,exIndex,direction),user.id))}/><button onClick={()=>setEditing({kind:'exercise',id:ex.id})}>Bearbeiten</button><button disabled={busy} onClick={()=>{if(window.confirm(`Übung „${ex.name}“ löschen?`))perform(()=>remove('training_exercises',ex.id,user.id))}}>Löschen</button></div></div>
         {editingAt('exercise',ex.id)&&<PromptForm label="Übungsname" value={ex.name} onCancel={()=>setEditing(null)} onSave={name=>perform(async()=>{const catalog=await ensureCatalogExercise(name,user.id);await update('training_exercises',ex.id,user.id,{name:catalog.name,catalog_exercise_id:catalog.id});setEditing(null)})}/>}
         <label className="rest-label">Pause je Satz <select value={ex.rest_seconds} onChange={e=>perform(()=>update('training_exercises',ex.id,user.id,{rest_seconds:number(e.target.value)}))}>{[60,90,120,180].map(v=><option key={v} value={v}>{v} Sekunden</option>)}</select></label>
-        <div className="set-list">{data.targets.filter(t=>t.exercise_id===ex.id).map((t,i)=><div className="set-row" key={t.id}><span>Satz {i+1}</span><strong>{t.weight_kg} kg × {t.reps}</strong><div className="actions"><button onClick={()=>setEditing({kind:'target',id:t.id})}>Ändern</button><button disabled={busy} onClick={()=>perform(()=>remove('training_targets',t.id,user.id))}>×</button></div>{editingAt('target',t.id)&&<SetEditor initial={t} onCancel={()=>setEditing(null)} onSave={values=>perform(async()=>{await update('training_targets',t.id,user.id,values);setEditing(null)})}/>}</div>)}</div>
+        <RepRangeEditor exercise={ex} busy={busy} onSave={values=>perform(()=>update('training_exercises',ex.id,user.id,values))}/>
+        <div className="set-list">{data.targets.filter(t=>t.exercise_id===ex.id).map((t,i)=><div className="set-row" key={t.id}><span>Satz {i+1}</span><strong>{t.weight_kg} kg × {rangeText(ex)}</strong><div className="actions"><button onClick={()=>setEditing({kind:'target',id:t.id})}>Ändern</button><button disabled={busy} onClick={()=>perform(()=>remove('training_targets',t.id,user.id))}>×</button></div>{editingAt('target',t.id)&&<SetEditor initial={t} onCancel={()=>setEditing(null)} onSave={values=>perform(async()=>{await update('training_targets',t.id,user.id,values);setEditing(null)})}/>}</div>)}</div>
         {editingAt('newtarget',ex.id)?<SetEditor key={`new-${ex.id}-${editing.initial.position}`} initial={editing.initial} onCancel={()=>setEditing(null)} onSave={values=>perform(async()=>{await insert('training_targets',{user_id:user.id,exercise_id:ex.id,position:editing.initial.position,...values});setEditing(null)})}/>:<button className="link" disabled={busy} onClick={()=>setEditing({kind:'newtarget',id:ex.id,initial:nextPlanSet(data.targets,ex.id)})}>+ Satz hinzufügen</button>}</article>)}
         {editingAt('newexercise',null)?<ExercisePicker catalog={data.catalog} busy={busy} onCancel={()=>setEditing(null)} onChoose={choice=>perform(async()=>{const catalog=choice.id?choice:await ensureCatalogExercise(choice.name,user.id);await insert('training_exercises',{user_id:user.id,day_id:day.id,name:catalog.name,catalog_exercise_id:catalog.id,rest_seconds:choice.rest_seconds,position:exercises.length?Math.max(...exercises.map(e=>e.position))+1:0});setEditing(null)})}/>:<button className="add" onClick={()=>setEditing({kind:'newexercise',id:null})}>+ Übung hinzufügen</button>}</div>}
     </>}

@@ -1,15 +1,5 @@
 import { useEffect, useRef } from 'react'
-
-function repetitions(sets) {
-  if(!sets.length)return 'Keine Sätze geplant'
-  const groups=[]
-  for(const set of sets) {
-    const last=groups.at(-1)
-    if(last?.reps===set.reps)last.count++
-    else groups.push({count:1,reps:set.reps})
-  }
-  return groups.map(group=>`${group.count} × ${group.reps}`).join(' · ')+' Wdh.'
-}
+import { rangeText } from './repRange'
 
 export function TrainingPreview({plan,day,exercises,targets,busy,error,onStart,onClose}) {
   const dialog=useRef(null)
@@ -30,6 +20,6 @@ export function TrainingPreview({plan,day,exercises,targets,busy,error,onStart,o
     <button className="primary preview-start" disabled={busy||setCount===0} onClick={onStart}>{busy?'Wird gestartet …':'Starten'}</button>
     {error&&<p className="notice error" role="alert">{error}</p>}
     {setCount===0&&<p className="notice">Füge im Trainingsplan zuerst mindestens einen Satz hinzu.</p>}
-    <ul className="preview-exercises">{rows.map(ex=><li key={ex.id}><strong>{ex.name}</strong><span>{repetitions(ex.sets)}</span></li>)}</ul>
+    <ul className="preview-exercises">{rows.map(ex=><li key={ex.id}><strong>{ex.name}</strong><span>{ex.sets.length?`${ex.sets.length} × ${rangeText(ex)} Wdh.`:'Keine Sätze geplant'}</span></li>)}</ul>
   </dialog>
 }
