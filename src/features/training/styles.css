@@ -168,3 +168,10 @@
 .training-surface .history-calendar-day.is-today{background:#eaf5f1;color:#126758;font-weight:750;box-shadow:inset 0 0 0 1px #9abdb5}
 .training-surface .history-calendar-dot{width:5px;height:5px;border-radius:50%;background:transparent}
 .training-surface .history-calendar-dot.is-trained{background:#16806b}
+.training-surface .history-calendar-heading button.history-calendar-month{width:auto;padding:6px 10px;font-size:1.05rem;font-weight:700;border-color:transparent}
+.training-surface .history-calendar-month[aria-pressed="true"]{color:#126758;background:#eaf5f1}
+.training-surface button.history-calendar-day{border:1px solid transparent;background:transparent;padding:4px 0}
+.training-surface button.history-calendar-day.is-today{background:#eaf5f1}
+.training-surface button.history-calendar-day.is-selected{background:#126758;color:white;border-color:#126758;box-shadow:none}
+.training-surface .history-calendar-day.is-selected .history-calendar-dot.is-trained{background:white}
+.training-surface .history-calendar-day:focus-visible,.training-surface .history-calendar-month:focus-visible{outline:2px solid #39a78e;outline-offset:2px}
