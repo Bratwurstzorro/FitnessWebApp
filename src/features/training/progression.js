@@ -44,6 +44,25 @@ export function rangeRecommendation(data,session,group,set,previous,currentValue
   const kg=n=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:2}).format(n)
   const weight=Number(previous?.actual_weight_kg??set.target_weight_kg)
   const enteredWeight=currentValues?.weight!==''&&currentValues?.weight!=null?Number(String(currentValues.weight).replace(',','.')):weight
+  const editedWeight=currentValues?.edited??enteredWeight!==weight
+  // Today’s completed sets take precedence over an older workout’s increase.
+  // Load progression is assessed at the start of an exercise, never repeatedly
+  // applied to each later set despite fatigue in the current workout.
+  const index=group.findIndex(row=>row.id===set.id)
+  const last=group.slice(0,index).filter(row=>row.completed_at).at(-1)
+  if(last) {
+    const lastWeight=Number(last.actual_weight_kg),lastReps=Number(last.actual_reps)
+    if(lastReps<repRange(last).min) {
+      if(lastWeight<=0)return {label:`Leichtere Variante wählen, ${min} Wiederholungen versuchen`,detail:`Im vorherigen Satz hast du ${lastReps} Wiederholungen geschafft und die Untergrenze verfehlt. Reduziere die Schwierigkeit für den nächsten Satz.`}
+      const raw=lastWeight*.95
+      const reduced=lastWeight>=5?Math.min(Math.round(raw*2)/2,lastWeight-.5):Number(raw.toFixed(2))
+      const suggested=editedWeight&&Number.isFinite(enteredWeight)&&enteredWeight>0?Math.min(enteredWeight,reduced):reduced
+      return {label:`Auf ${kg(suggested)} kg reduzieren, ${min} Wiederholungen versuchen`,detail:`Heute im vorherigen Satz: ${kg(lastWeight)} kg × ${lastReps}; die Untergrenze war ${repRange(last).min}. Deshalb hat eine Reduktion Vorrang vor der historischen Steigerung. Etwa 5 % weniger, hier gerundet, sind eine praktische App-Regel; an die Geräteabstufung anpassen.`}
+    }
+    const suggested=editedWeight&&Number.isFinite(enteredWeight)&&enteredWeight>0?Math.min(enteredWeight,lastWeight):lastWeight
+    const reps=Math.min(max,Math.max(min,previous&&Number(previous.actual_weight_kg)===suggested?Number(previous.actual_reps)+1:lastReps))
+    return {label:`${kg(suggested)} kg halten, ${reps} Wiederholungen versuchen`,detail:`Der vorherige Satz heute lag mit ${lastReps} Wiederholungen innerhalb der Vorgabe. Für die weiteren Sätze wird das Gewicht nicht erneut erhöht. Die Empfehlung berücksichtigt deine heutige Leistung und die mögliche Ermüdung.`}
+  }
   const history=group.map(row=>previousForSet(data.sets,data.sessions,session,row))
   const sameSession=history.length>0&&history.every(row=>row&&row.session_id===history[0].session_id)
   const increase=weight>0&&sameSession&&history.every((row,index)=>Number(row.actual_reps)>=repRange(group[index]).max)

@@ -34,3 +34,21 @@ test('changed live weight prevents a second increase and gives a concrete rep go
  const below=data([13,14,15])
  assert.match(rangeRecommendation(below,session,fixed,fixed[0],below.sets[0]).label,/20 kg halten, 15 Wiederholungen/)
 })
+
+test('42 kg x 8, then 42 kg x 5 at 6–10 lowers the third set even against strong history',()=>{
+ const live=group.map(s=>({...s,rep_max:10,target_weight_kg:42}))
+ const d=data([12,12,12]);d.sets.forEach(s=>s.actual_weight_kg=42)
+ live[0]={...live[0],actual_weight_kg:42,actual_reps:8,completed_at:'2026-09-30'}
+ assert.match(rangeRecommendation(d,session,live,live[1],d.sets[1],{weight:'42'}).label,/42 kg halten/)
+ live[1]={...live[1],actual_weight_kg:42,actual_reps:5,completed_at:'2026-09-30'}
+ const advice=rangeRecommendation(d,session,live,live[2],d.sets[2],{weight:'44'})
+ assert.match(advice.label,/Auf 40 kg reduzieren, 6 Wiederholungen/)
+ assert.match(advice.detail,/42 kg × 5/)
+ assert.match(rangeRecommendation(d,session,live,live[2],d.sets[2],{weight:'38'}).label,/38 kg reduzieren/)
+})
+test('later sets never repeat a historical load increase after current set completion',()=>{
+ const d=data([12,12,12])
+ const live=group.map(s=>({...s}))
+ live[0]={...live[0],actual_weight_kg:21,actual_reps:12,completed_at:'2026-09-30'}
+ assert.match(rangeRecommendation(d,session,live,live[1],d.sets[1],{weight:'21'}).label,/21 kg halten/)
+})

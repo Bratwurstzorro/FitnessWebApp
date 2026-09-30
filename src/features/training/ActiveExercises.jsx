@@ -36,7 +36,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
   const prior=activeIndex>0?group[activeIndex-1]:null
   const historical=activeSet?previousForSet(data.sets,data.sessions,session,activeSet):null
   const baseline=historical??(prior?.completed_at?prior:null)
-  const advice=activeSet?rangeRecommendation(data,session,group,activeSet,baseline,defaults[activeIndex]):null
+  const advice=activeSet?rangeRecommendation(data,session,group,activeSet,baseline,{...defaults[activeIndex],edited:!!drafts[activeSet.id]}):null
   const next=groups.find(g=>g!==group&&g.some(s=>!s.completed_at))
   return <>
     <div className="exercise-tabs" role="tablist" aria-label="Übungen im Training">{groups.map(g=>{
