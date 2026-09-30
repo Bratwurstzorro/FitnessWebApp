@@ -39,14 +39,17 @@ export function historicalSetValues(data,session,set) {
 }
 
 // Keep the plan range stable and compare each set with its own last performance.
-export function rangeRecommendation(data,session,group,set,previous) {
+export function rangeRecommendation(data,session,group,set,previous,currentValues) {
   const {min,max}=repRange(set)
   const kg=n=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:2}).format(n)
   const weight=Number(previous?.actual_weight_kg??set.target_weight_kg)
+  const enteredWeight=currentValues?.weight!==''&&currentValues?.weight!=null?Number(String(currentValues.weight).replace(',','.')):weight
   const history=group.map(row=>previousForSet(data.sets,data.sessions,session,row))
   const sameSession=history.length>0&&history.every(row=>row&&row.session_id===history[0].session_id)
   const increase=weight>0&&sameSession&&history.every((row,index)=>Number(row.actual_reps)>=repRange(group[index]).max)
-  if(increase)return {label:`${kg(weight*1.02)}–${kg(weight*1.05)} kg mit ${min} bis ${max} Wiederholungen prüfen`,detail:'Im letzten Vergleichstraining haben alle Sätze die Obergrenze erreicht. Prüfe 2–5 % mehr Gewicht, passend zur Geräteabstufung; bleibe mit sauberer Technik innerhalb der Spanne.'}
+  if(previous&&Number.isFinite(enteredWeight)&&enteredWeight!==weight)return {label:`${kg(enteredWeight)} kg halten, ${enteredWeight>weight?min:Math.min(max,Math.max(min,Number(previous.actual_reps)+1))} Wiederholungen versuchen`,detail:'Die Empfehlung berücksichtigt dein bereits geändertes Satzgewicht. Bei einer Erhöhung beginne am unteren Ende der Spanne; passe die Geräteabstufung und Technik an.'}
+  if(increase)return {label:`${kg(weight*1.02)}–${kg(weight*1.05)} kg prüfen, ${min} Wiederholungen versuchen`,detail:'Im letzten Vergleichstraining haben alle Sätze die Obergrenze erreicht. Prüfe 2–5 % mehr Gewicht, passend zur Geräteabstufung; bleibe mit sauberer Technik innerhalb der Spanne.'}
   const reps=previous?Math.min(max,Math.max(min,Number(previous.actual_reps)+1)):min
+  if(!previous)return {label:`${kg(weight)} kg, ${min} Wiederholungen versuchen`,detail:'Noch kein Vergleichssatz vorhanden. Beginne mit der Planvorgabe und passe sie an deine Leistungsfähigkeit an.'}
   return {label:`${kg(weight)} kg halten, ${reps} Wiederholungen versuchen`,detail:previous&&Number(previous.actual_reps)>=max?'Die Obergrenze dieses Satzes ist erreicht. Festige sie, während die übrigen Sätze aufholen.':'Steigere die Wiederholungen innerhalb deiner geplanten Spanne, soweit es mit sauberer Technik möglich ist.'}
 }

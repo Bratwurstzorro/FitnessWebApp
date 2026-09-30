@@ -141,3 +141,12 @@
 .training-surface .rep-range-editor{margin:12px 0;display:grid;gap:6px;font-size:.9rem}
 .training-surface .rep-range-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .training-surface .rep-range-controls input{width:64px;min-width:0}
+
+.training-surface .rest-label{display:flex;align-items:center;gap:10px;max-width:none}
+.training-surface .rest-label select{display:inline-block;width:auto;margin-top:0;min-width:0}
+.training-surface .rep-range-editor{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.training-surface .rep-range-editor>span{font-size:.88rem;font-weight:650}
+.training-surface .rep-range-controls{flex-wrap:nowrap;gap:6px}
+.training-surface .rep-range-controls input{width:48px;padding:10px 6px;text-align:center}
+.training-surface .rep-range-editor>small{flex-basis:100%}
+@media(max-width:380px){.training-surface .rep-range-editor{gap:6px}.training-surface .rep-range-editor>span{font-size:.8rem}}

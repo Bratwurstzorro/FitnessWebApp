@@ -10,7 +10,6 @@ export function RepRangeEditor({exercise,busy,onSave}) {
     <span>Wiederholungsspanne</span><div className="rep-range-controls">
       <NumericInput kind="reps" aria-label={`${exercise.name} Wiederholungen von`} value={min} onChange={setMin} disabled={busy}/>
       <span>bis</span><NumericInput kind="reps" aria-label={`${exercise.name} Wiederholungen bis`} value={max} onChange={setMax} disabled={busy}/>
-      {changed&&<button className="primary" disabled={busy||!validRange(min,max)}>Speichern</button>}
-    </div>{changed&&!validRange(min,max)&&<small role="alert">Bitte 1–1000 Wiederholungen eingeben; die Untergrenze darf nicht größer als die Obergrenze sein.</small>}
+    </div>{changed&&<button className="primary" disabled={busy||!validRange(min,max)}>Speichern</button>}{changed&&!validRange(min,max)&&<small role="alert">Bitte 1–1000 Wiederholungen eingeben; die Untergrenze darf nicht größer als die Obergrenze sein.</small>}
   </form>
 }

@@ -20,9 +20,17 @@ test('history remains individual while advice is capped at range maximum',()=>{
 })
 test('load increases only when every matching historical set reaches the upper bound',()=>{
  const d=data([12,12,12])
- assert.match(rangeRecommendation(d,session,group,group[1],d.sets[1]).label,/20,4–21 kg mit 6 bis 12/)
+ assert.match(rangeRecommendation(d,session,group,group[1],d.sets[1]).label,/20,4–21 kg prüfen, 6 Wiederholungen/)
  const partial=data([12,12,11])
  assert.match(rangeRecommendation(partial,session,group,group[0],partial.sets[0]).label,/halten/)
  d.sets.pop()
  assert.match(rangeRecommendation(d,session,group,group[0],d.sets[0]).label,/halten/)
+})
+
+test('changed live weight prevents a second increase and gives a concrete rep goal',()=>{
+ const d=data([12,12,12])
+ assert.match(rangeRecommendation(d,session,group,group[0],d.sets[0],{weight:'22,5'}).label,/22,5 kg halten, 6 Wiederholungen/)
+ const fixed=group.map(s=>({...s,rep_min:15,rep_max:15}))
+ const below=data([13,14,15])
+ assert.match(rangeRecommendation(below,session,fixed,fixed[0],below.sets[0]).label,/20 kg halten, 15 Wiederholungen/)
 })
