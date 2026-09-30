@@ -1,4 +1,5 @@
 import { repRange } from './repRange.js'
+import { parseRir, repGoal, readyToIncrease, needsLighter, rirText } from './rir.js'
 // The ACSM 2009 position stand recommends increasing load 2–10% once a lifter
 // exceeds the target by 1–2 reps. Exact increments and per-set decisions are
 // practical app heuristics, not validated individual prescriptions.
@@ -52,23 +53,29 @@ export function rangeRecommendation(data,session,group,set,previous,currentValue
   const last=group.slice(0,index).filter(row=>row.completed_at).at(-1)
   if(last) {
     const lastWeight=Number(last.actual_weight_kg),lastReps=Number(last.actual_reps)
-    if(lastReps<repRange(last).min) {
+    if(needsLighter(last,repRange(last).min)) {
       if(lastWeight<=0)return {label:`Leichtere Variante wählen, ${min} Wiederholungen versuchen`,detail:`Im vorherigen Satz hast du ${lastReps} Wiederholungen geschafft und die Untergrenze verfehlt. Reduziere die Schwierigkeit für den nächsten Satz.`}
       const raw=lastWeight*.95
       const reduced=lastWeight>=5?Math.min(Math.round(raw*2)/2,lastWeight-.5):Number(raw.toFixed(2))
       const suggested=editedWeight&&Number.isFinite(enteredWeight)&&enteredWeight>0?Math.min(enteredWeight,reduced):reduced
-      return {label:`Auf ${kg(suggested)} kg reduzieren, ${min} Wiederholungen versuchen`,detail:`Heute im vorherigen Satz: ${kg(lastWeight)} kg × ${lastReps}; die Untergrenze war ${repRange(last).min}. Deshalb hat eine Reduktion Vorrang vor der historischen Steigerung. Etwa 5 % weniger, hier gerundet, sind eine praktische App-Regel; an die Geräteabstufung anpassen.`}
+      return {label:`Auf ${kg(suggested)} kg reduzieren, ${min} Wiederholungen versuchen`,detail:`Heute im vorherigen Satz: ${kg(lastWeight)} kg × ${lastReps}; die Untergrenze war ${repRange(last).min}${last.rir!=null?` und RIR ${rirText(last.rir)}`:''}. Deshalb hat eine Reduktion Vorrang vor der historischen Steigerung. Etwa 5 % weniger, hier gerundet, sind eine praktische App-Regel; an die Geräteabstufung anpassen.`}
     }
     const suggested=editedWeight&&Number.isFinite(enteredWeight)&&enteredWeight>0?Math.min(enteredWeight,lastWeight):lastWeight
-    const reps=Math.min(max,Math.max(min,previous&&Number(previous.actual_weight_kg)===suggested?Number(previous.actual_reps)+1:lastReps))
-    return {label:`${kg(suggested)} kg halten, ${reps} Wiederholungen versuchen`,detail:`Der vorherige Satz heute lag mit ${lastReps} Wiederholungen innerhalb der Vorgabe. Für die weiteren Sätze wird das Gewicht nicht erneut erhöht. Die Empfehlung berücksichtigt deine heutige Leistung und die mögliche Ermüdung.`}
+    const historicalGoal=repGoal(previous&&Number(previous.actual_weight_kg)===suggested?previous:last,min,max)
+    const reps=last.rir!=null?Math.min(historicalGoal,repGoal(last,min,max)):historicalGoal
+    return {label:`${kg(suggested)} kg halten, ${reps} Wiederholungen versuchen`,detail:`Vorheriger Satz heute: ${lastReps} Wiederholungen${last.rir!=null?` bei RIR ${rirText(last.rir)}`:''}. Für die weiteren Sätze wird das Gewicht nicht erneut erhöht. Die Empfehlung berücksichtigt deine heutige Leistung, erfasste Reserve und mögliche Ermüdung; mit RIR dient etwa 1–2 Reserve als Orientierung.`}
   }
   const history=group.map(row=>previousForSet(data.sets,data.sessions,session,row))
   const sameSession=history.length>0&&history.every(row=>row&&row.session_id===history[0].session_id)
-  const increase=weight>0&&sameSession&&history.every((row,index)=>Number(row.actual_reps)>=repRange(group[index]).max)
-  if(previous&&Number.isFinite(enteredWeight)&&enteredWeight!==weight)return {label:`${kg(enteredWeight)} kg halten, ${enteredWeight>weight?min:Math.min(max,Math.max(min,Number(previous.actual_reps)+1))} Wiederholungen versuchen`,detail:'Die Empfehlung berücksichtigt dein bereits geändertes Satzgewicht. Bei einer Erhöhung beginne am unteren Ende der Spanne; passe die Geräteabstufung und Technik an.'}
-  if(increase)return {label:`${kg(weight*1.02)}–${kg(weight*1.05)} kg prüfen, ${min} Wiederholungen versuchen`,detail:'Im letzten Vergleichstraining haben alle Sätze die Obergrenze erreicht. Prüfe 2–5 % mehr Gewicht, passend zur Geräteabstufung; bleibe mit sauberer Technik innerhalb der Spanne.'}
-  const reps=previous?Math.min(max,Math.max(min,Number(previous.actual_reps)+1)):min
+  const increase=weight>0&&sameSession&&history.every((row,index)=>readyToIncrease(row,repRange(group[index]).min,repRange(group[index]).max))
+  if(previous&&Number.isFinite(enteredWeight)&&enteredWeight!==weight)return {label:`${kg(enteredWeight)} kg halten, ${enteredWeight>weight?min:repGoal(previous,min,max)} Wiederholungen versuchen`,detail:'Die Empfehlung berücksichtigt dein bereits geändertes Satzgewicht. Bei einer Erhöhung beginne am unteren Ende der Spanne; passe die Geräteabstufung und Technik an.'}
+  if(previous&&previous.session_id!==session.id&&parseRir(previous.rir)!=null&&needsLighter(previous,min)) {
+    const raw=weight*.95
+    const lighter=weight>=5?Math.min(Math.round(raw*2)/2,weight-.5):Number(raw.toFixed(2))
+    return {label:weight>0?`Auf ${kg(lighter)} kg reduzieren, ${min} Wiederholungen versuchen`:`Leichtere Variante wählen, ${min} Wiederholungen versuchen`,detail:`Der letzte Vergleichssatz erreichte ${previous.actual_reps} Wiederholungen${previous.rir!=null?` bei RIR ${rirText(previous.rir)}`:''}. Für die Untergrenze mit etwas Reserve empfiehlt die App etwa 5 % weniger Gewicht. Die Geräteabstufung berücksichtigen.`}
+  }
+  if(increase)return {label:`${kg(weight*1.02)}–${kg(weight*1.05)} kg prüfen, ${min} Wiederholungen versuchen`,detail:'Im letzten Vergleichstraining haben alle Sätze die Obergrenze erreicht oder bei erfasster RIR genügend geschätzte Reserve für das obere Ende mit etwa 1 Wiederholung Reserve gezeigt. Prüfe 2–5 % mehr Gewicht, passend zur Geräteabstufung; bleibe mit sauberer Technik innerhalb der Spanne.'}
+  const reps=previous?repGoal(previous,min,max):min
   if(!previous)return {label:`${kg(weight)} kg, ${min} Wiederholungen versuchen`,detail:'Noch kein Vergleichssatz vorhanden. Beginne mit der Planvorgabe und passe sie an deine Leistungsfähigkeit an.'}
-  return {label:`${kg(weight)} kg halten, ${reps} Wiederholungen versuchen`,detail:previous&&Number(previous.actual_reps)>=max?'Die Obergrenze dieses Satzes ist erreicht. Festige sie, während die übrigen Sätze aufholen.':'Steigere die Wiederholungen innerhalb deiner geplanten Spanne, soweit es mit sauberer Technik möglich ist.'}
+  return {label:`${kg(weight)} kg halten, ${reps} Wiederholungen versuchen`,detail:parseRir(previous.rir)!=null?`Letzter Satz: ${previous.actual_reps} Wiederholungen bei RIR ${rirText(previous.rir)}. Wiederholungen + RIR − 1 werden als vorsichtige Orientierung innerhalb der Spanne genutzt; Ziel ist etwa 1–2 RIR, keine garantierte Wiederholungszahl.`:previous&&Number(previous.actual_reps)>=max?'Die Obergrenze dieses Satzes ist erreicht. Festige sie, während die übrigen Sätze aufholen.':'Steigere die Wiederholungen innerhalb deiner geplanten Spanne, soweit es mit sauberer Technik möglich ist.'}
 }

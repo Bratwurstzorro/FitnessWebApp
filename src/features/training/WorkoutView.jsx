@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { addWorkoutExercise, cancelWorkout, ensureCatalogExercise, finishAndApplyToPlan, insert, remove, removeWorkoutExercise, update, saveSessionOrder } from './api'
 import { previousForSet, recommendation, historicalSetValues } from './progression'
 import { RestTimer } from './RestTimer'
+import { RirInput } from './RirInput'
+import { parseRir } from './rir'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
 import { workoutValues } from './setDefaults'
@@ -19,9 +21,10 @@ function WorkoutSet({value,index,previous,values,onDraft,busy,onDone,onRemove,hi
     <div className="set-heading"><strong>Satz {index+1} {value.completed_at?'✓':''}</strong><div className="actions"><button disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>Entfernen</button></div></div>
     {!historyMode&&<><small>Ziel {value.target_weight_kg} kg × {value.target_reps} · zuletzt {previous?`${previous.actual_weight_kg} kg × ${previous.actual_reps}`:'kein früherer Satz'}</small>
     <div className="advice"><strong>Empfehlung: {advice.label}</strong><small>{advice.detail}</small></div></>}
-    <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:parseNumeric(values.weight),actual_reps:parseNumeric(values.reps)})}} className="set-controls">
+    <form onSubmit={e=>{e.preventDefault();onDone({actual_weight_kg:parseNumeric(values.weight),actual_reps:parseNumeric(values.reps),rir:parseRir(values.rir)})}} className="set-controls">
       <label>kg<NumericInput aria-label={`Satz ${index+1} Gewicht`} kind="weight" max="9999" value={values.weight} onChange={weight=>onDraft({...values,weight})}/></label>
       <label>Wdh.<NumericInput aria-label={`Satz ${index+1} Wiederholungen`} kind="reps" max="1000" value={values.reps} onChange={reps=>onDraft({...values,reps})}/></label>
+      <label>RIR<RirInput aria-label={`Satz ${index+1} Reserve RIR`} value={values.rir} disabled={busy} onChange={rir=>onDraft({...values,rir})}/></label>
       <button className="primary" disabled={busy}>{historyMode?'Satz speichern':value.completed_at?'Korrigieren':'Satz fertig'}</button>
     </form>
   </div>
@@ -63,7 +66,7 @@ export function WorkoutView({user,data,session,currentSets,timer,setTimer,busy,e
         rep_min:last.rep_min??10,rep_max:last.rep_max??10,
         rest_seconds:last.rest_seconds,target_weight_kg:parseNumeric(values.weight),target_reps:parseNumeric(values.reps),
       })
-      setDrafts(current=>({...current,[created.id]:values}))
+      setDrafts(current=>({...current,[created.id]:{...values,rir:''}}))
     })
   }
   async function addExercise(choice) {

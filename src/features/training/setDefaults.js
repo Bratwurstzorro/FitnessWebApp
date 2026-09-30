@@ -11,8 +11,8 @@ export function nextPlanSet(targets,exerciseId) {
 export function workoutValues(group,drafts,suggestionForSet) {
   return group.map(set=>{
     const source=drafts[set.id]??(set.completed_at
-      ?{weight:set.actual_weight_kg,reps:set.actual_reps}
+      ?{weight:set.actual_weight_kg,reps:set.actual_reps,rir:set.rir??''}
       :typeof suggestionForSet==='function'?suggestionForSet(set):suggestionForSet)
-    return {weight:String(source.weight),reps:String(source.reps)}
+    return {weight:String(source.weight),reps:String(source.reps),rir:source.rir==null?'':String(source.rir)}
   })
 }

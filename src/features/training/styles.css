@@ -150,3 +150,11 @@
 .training-surface .rep-range-controls input{width:48px;padding:10px 6px;text-align:center}
 .training-surface .rep-range-editor>small{flex-basis:100%}
 @media(max-width:380px){.training-surface .rep-range-editor{gap:6px}.training-surface .rep-range-editor>span{font-size:.8rem}}
+
+.training-surface .focused-set-row,.training-surface .focused-set-columns{grid-template-columns:64px minmax(0,1fr) minmax(0,1fr) 58px 40px 24px;gap:6px}
+.training-surface .focused-set-row select{padding:8px 3px;margin-top:0;font-size:.85rem;min-width:0}
+.training-surface .focused-set.locked select{background:#edf1ef;color:#6d807d}
+.training-surface .recent-set{grid-template-columns:1fr 1fr 1fr .8fr}
+.training-surface .rir-help{font-size:.75rem;color:#60736c;margin:0 0 12px}
+.training-surface .rir-help small{display:block;margin-top:6px;line-height:1.5}
+@media(max-width:420px){.training-surface .focused-set-row,.training-surface .focused-set-columns{grid-template-columns:42px minmax(0,1fr) minmax(0,1fr) 48px 34px 20px;gap:4px}.training-surface .focused-set-row input{padding:8px 4px;font-size:.85rem}.training-surface .focused-set-row>strong{font-size:.7rem}}

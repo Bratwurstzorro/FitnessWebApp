@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { RirInput } from './RirInput'
+import { parseRir, rirText } from './rir'
 import { NumericInput } from './NumericInput'
 import { parseNumeric } from './numeric'
 import { workoutValues } from './setDefaults'
@@ -12,10 +14,11 @@ const date=value=>new Date(value).toLocaleDateString('de-DE',{day:'2-digit',mont
 function ActiveSet({set,index,values,active,busy,onDraft,onSave,onRemove}) {
   const editable=active||!!set.completed_at
   return <div className={`focused-set ${set.completed_at?'complete':''} ${!editable?'locked':''}`}>
-    <form className="focused-set-row" onSubmit={event=>{event.preventDefault();onSave({actual_weight_kg:parseNumeric(values.weight),actual_reps:parseNumeric(values.reps)})}}>
+    <form className="focused-set-row" onSubmit={event=>{event.preventDefault();onSave({actual_weight_kg:parseNumeric(values.weight),actual_reps:parseNumeric(values.reps),rir:parseRir(values.rir)})}}>
       <strong>Satz #{index+1}</strong>
       <label><span className="set-input-label">kg</span><NumericInput kind="weight" value={values.weight} disabled={busy||!editable} onChange={weight=>onDraft({...values,weight})} aria-label={`Satz ${index+1} Gewicht`}/></label>
       <label><span className="set-input-label">Wdh.</span><NumericInput kind="reps" value={values.reps} disabled={busy||!editable} onChange={reps=>onDraft({...values,reps})} aria-label={`Satz ${index+1} Wiederholungen`}/></label>
+      <label><span className="set-input-label">Reserve (RIR)</span><RirInput value={values.rir} disabled={busy||!editable} onChange={rir=>onDraft({...values,rir})} aria-label={`Satz ${index+1} Reserve RIR`}/></label>
       <button type="submit" className="set-check" disabled={busy||!editable} aria-label={set.completed_at?`Satz ${index+1} Korrektur speichern`:`Satz ${index+1} bestätigen`}>✓</button>
       <button type="button" className="set-delete" disabled={busy} onClick={onRemove} aria-label={`Satz ${index+1} entfernen`}>×</button>
     </form>
@@ -36,7 +39,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
   const prior=activeIndex>0?group[activeIndex-1]:null
   const historical=activeSet?previousForSet(data.sets,data.sessions,session,activeSet):null
   const baseline=historical??(prior?.completed_at?prior:null)
-  const advice=activeSet?rangeRecommendation(data,session,group,activeSet,baseline,{...defaults[activeIndex],edited:!!drafts[activeSet.id]}):null
+  const advice=activeSet?rangeRecommendation(data,session,group,activeSet,baseline,{...defaults[activeIndex],edited:!!drafts[activeSet.id]&&parseNumeric(defaults[activeIndex].weight)!==Number(baseline?.actual_weight_kg??activeSet.target_weight_kg)}):null
   const next=groups.find(g=>g!==group&&g.some(s=>!s.completed_at))
   return <>
     <div className="exercise-tabs" role="tablist" aria-label="Übungen im Training">{groups.map(g=>{
@@ -50,12 +53,13 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
         <small>{warmup.reference>0?`40 % von ${kg(warmup.reference)} kg (${warmup.fromHistory?'letzter absolvierter Satz':'Planwert, noch keine Historie'}). Auf die Geräteabstufung anpassen und locker ausführen.`:'Wähle eine leichte Variante passend zur Übung.'}</small>
         <small>Ribeiro et al. (2020) untersuchten bei Bankdrücken und Kniebeugen u. a. 6 Wiederholungen mit 40 % der Trainingslast. Die Übertragung auf dein letztes Satzgewicht und andere Übungen ist eine praktische App-Regel. Bei schweren Arbeitsgewichten können weitere Aufwärmsätze nötig sein. <a href="https://pubmed.ncbi.nlm.nih.gov/32971729/" target="_blank" rel="noreferrer">Studie</a></small>
       </details>
-      <div className="focused-set-columns" aria-hidden="true"><span>Satz</span><span>kg</span><span>Wdh.</span><span></span><span></span></div>
+      <div className="focused-set-columns" aria-hidden="true"><span>Satz</span><span>kg</span><span>Wdh.</span><span>RIR</span><span></span><span></span></div>
       <div className="focused-sets">{group.map((set,index)=><ActiveSet key={set.id} set={set} index={index} values={defaults[index]} active={index===activeIndex} busy={busy}
         onDraft={values=>setDrafts(current=>({...current,[set.id]:values}))} onSave={async values=>{const nextId=nextExerciseAfterSet(groups,set);if(await onSaveSet(set,values)){if(nextId)setSelected(nextId)}}} onRemove={()=>onRemoveSet(set)}/>)}</div>
       <button className="link" disabled={busy} onClick={()=>onAddSet(group)}>+ Satz hinzufügen</button>
-      {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong></summary><small>{advice.detail}</small><small>{historical?`Zuletzt Satz #${activeIndex+1}: ${historical.actual_weight_kg} kg × ${historical.actual_reps}`:prior?.completed_at?`Basis ohne Historie: heute Satz #${activeIndex} · ${prior.actual_weight_kg} kg × ${prior.actual_reps}`:'Basis: dein Trainingsplan'}</small><small>Doppelte Progression: zunächst Wiederholungen innerhalb der Spanne steigern; wenn alle Vergleichssätze die Obergrenze erreicht haben, eine kleine Laststeigerung prüfen. Diese konkrete Regel ist eine praktische App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
-      <aside className="recent-training"><strong>Die letzten zwei Trainings</strong>{recent.length?recent.map(previous=><div key={previous.id}><p>{date(previous.finished_at)} · {previous.plan_name} · {previous.day_name}</p>{previous.sets.map((set,index)=><div className="recent-set" key={set.id}><span>Satz #{index+1}</span><span>{set.actual_weight_kg} kg</span><span>{set.actual_reps} Wdh.</span></div>)}</div>):<p>Noch keine abgeschlossenen Trainings für diese Übung.</p>}</aside>
+      <details className="rir-help"><summary>Reserve (RIR) erklären</summary><small>Wie viele weitere Wiederholungen wären mit sauberer Technik möglich gewesen? 0 = keine, 1 = eine, 2 = zwei, 3+ = mindestens drei. Optional je Satz nach der Ausführung einschätzen; – bedeutet nicht angegeben.</small></details>
+      {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong></summary><small>{advice.detail}</small><small>{historical?`Zuletzt Satz #${activeIndex+1}: ${historical.actual_weight_kg} kg × ${historical.actual_reps}`:prior?.completed_at?`Basis ohne Historie: heute Satz #${activeIndex} · ${prior.actual_weight_kg} kg × ${prior.actual_reps}`:'Basis: dein Trainingsplan'}</small><small>Doppelte Progression: zunächst Wiederholungen innerhalb der Spanne steigern; wenn alle Vergleichssätze die Obergrenze erreicht haben oder ihre RIR-Schätzung ausreichend Reserve erkennen lässt, eine kleine Laststeigerung prüfen. Mit RIR zielt die Empfehlung auf etwa 1–2 Wiederholungen Reserve. Die Schätzung aus Wiederholungen + RIR ist keine sichere Leistungsprognose; diese konkrete Regel ist eine praktische App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/34542869/" target="_blank" rel="noreferrer">RIR-Schätzgenauigkeit</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
+      <aside className="recent-training"><strong>Die letzten zwei Trainings</strong>{recent.length?recent.map(previous=><div key={previous.id}><p>{date(previous.finished_at)} · {previous.plan_name} · {previous.day_name}</p>{previous.sets.map((set,index)=><div className="recent-set" key={set.id}><span>Satz #{index+1}</span><span>{set.actual_weight_kg} kg</span><span>{set.actual_reps} Wdh.</span><span>RIR {rirText(set.rir)}</span></div>)}</div>):<p>Noch keine abgeschlossenen Trainings für diese Übung.</p>}</aside>
     </article>
   </>
 }
