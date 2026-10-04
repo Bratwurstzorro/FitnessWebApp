@@ -3,7 +3,6 @@ import { WorkoutDialog } from './WorkoutDialog'
 import { ProgressChart } from './ProgressView'
 import { exerciseHistory } from './exerciseHistory'
 import { guideForExercise } from './exerciseGuides'
-import { ExerciseIllustration } from './ExerciseIllustration'
 import { rirText } from './rir'
 
 const weight=value=>value==null?'—':`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} kg`
@@ -21,12 +20,11 @@ export function ExerciseInfoDialog({exercise,data,session,onClose}) {
     </div>
     <div role="tabpanel" id={`exercise-info-panel-${tab}`} aria-labelledby={`exercise-info-tab-${tab}`} tabIndex={0}>
       {tab==='execution'?(guide?<div className="exercise-instructions">
-        <ExerciseIllustration guide={guide}/>
         <h3>Setup</h3><ol>{guide.setup.map(text=><li key={text}>{text}</li>)}</ol>
         <h3>Ausführung</h3><ol>{guide.execution.map(text=><li key={text}>{text}</li>)}</ol>
         <h3>Darauf achten</h3><ul>{guide.cues.map(text=><li key={text}>{text}</li>)}</ul>
         <a className="exercise-guide-source" href={guide.source} target="_blank" rel="noreferrer">Technikreferenz ansehen ↗</a>
-      </div>:<p className="muted">Für diese Übung ist noch keine bebilderte Anleitung hinterlegt.</p>):<>
+      </div>:<p className="muted">Für diese Übung ist noch keine Anleitung hinterlegt.</p>):<>
         <div className="progress-stats exercise-info-stats">
           <div><small>Workouts</small><strong>{history.count}</strong></div>
           <div><small>Maximalgewicht</small><strong>{weight(history.maxWeight)}</strong></div>

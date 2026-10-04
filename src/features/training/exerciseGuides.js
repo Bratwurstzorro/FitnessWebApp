@@ -32,7 +32,7 @@ export const exerciseGuides={
   'Jefferson Curls':guide('jefferson','Kontrolliertes Ab- und Aufrollen',
     ['Stabil stehen, Knie locker und Gewicht vor dem Körper halten.','Nur den bereits eingeübten Bewegungsumfang nutzen.'],
     ['Kopf und Oberkörper kontrolliert nach vorn abrollen; Arme hängen lassen.','Aus der unteren Position kontrolliert wieder aufrollen.'],
-    ['Nicht federn oder Tiefe erzwingen.','Die Zeichnung zeigt die Bewegung schematisch, keine vorgegebene Endtiefe.'],
+    ['Nicht federn oder Tiefe erzwingen.','Den Bewegungsumfang kontrolliert und ohne erzwungene Endtiefe wählen.'],
     'https://e3rehab.com/ranking-the-5-most-dangerous-exercises/'),
   'Latzug':guide('lat','Latzug vor dem Körper',
     ['Oberschenkel unter dem Polster fixieren und Griff sicher fassen.','Rumpf stabil halten und höchstens leicht zurücklehnen.'],
