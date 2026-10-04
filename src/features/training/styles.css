@@ -175,3 +175,8 @@
 .training-surface button.history-calendar-day.is-selected{background:#126758;color:white;border-color:#126758;box-shadow:none}
 .training-surface .history-calendar-day.is-selected .history-calendar-dot.is-trained{background:white}
 .training-surface .history-calendar-day:focus-visible,.training-surface .history-calendar-month:focus-visible{outline:2px solid #39a78e;outline-offset:2px}
+.training-surface .active-advice .advice-toggle-hint{font-size:.73rem;color:#126758;margin-top:3px}
+.training-surface .advice-explanation{margin:12px 0;font-size:.78rem;line-height:1.5}
+.training-surface .advice-explanation>div{padding:8px 0;border-top:1px solid #cce4db}
+.training-surface .advice-explanation dt{font-weight:750;color:#18313b}
+.training-surface .advice-explanation dd{margin:3px 0 0;color:#526863;overflow-wrap:anywhere;white-space:pre-line}
