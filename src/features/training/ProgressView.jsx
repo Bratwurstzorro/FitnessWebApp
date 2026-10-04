@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { exerciseProgress, progressForRange } from './exerciseProgress'
 
 const ranges=[['1m','1M'],['3m','3M'],['6m','6M'],['1y','1J'],['2y','2J'],['all','Gesamt']]
 const weight=value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} kg`
 const date=value=>new Date(value).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})
 
-function ProgressChart({points,large=false}) {
+export function ProgressChart({points,large=false,showAxes=false}) {
   if(!points.length)return <div className="progress-empty">Keine Daten in diesem Zeitraum</div>
   return <div className={large?'progress-chart large':'progress-chart'}>
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={points} margin={{top:10,right:10,bottom:8,left:10}}>
+        {showAxes&&<XAxis dataKey="date" tickFormatter={value=>new Date(value).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} tick={{fontSize:11}} minTickGap={24}/>}
+        {showAxes&&<YAxis width={44} tick={{fontSize:11}} unit=" kg"/>}
         {large&&<Tooltip content={({active,payload})=>{
           const point=active&&payload?.[0]?.payload
           return point?<div className="progress-tooltip"><small>{date(point.date)} · {point.day}</small><strong>Ø {weight(point.weight)} pro Wdh.</strong><small>{point.totalReps} Wdh. in {point.setCount} {point.setCount===1?'Satz':'Sätzen'} · schwerster Satz {weight(point.maxWeight)} × {point.maxReps}</small></div>:null

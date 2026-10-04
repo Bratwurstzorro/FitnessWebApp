@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { RirInput } from './RirInput'
 import { parseRir, rirText } from './rir'
 import { NumericInput } from './NumericInput'
@@ -10,6 +10,7 @@ import { exerciseGroups, firstOpenExercise, recentExerciseSessions, warmupSugges
 
 const kg=value=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(value)
 const date=value=>new Date(value).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})
+const ExerciseInfoDialog=lazy(()=>import('./ExerciseInfoDialog').then(module=>({default:module.ExerciseInfoDialog})))
 
 function ActiveSet({set,index,values,active,busy,onDraft,onSave,onRemove}) {
   const editable=active||!!set.completed_at
@@ -29,6 +30,7 @@ function ActiveSet({set,index,values,active,busy,onDraft,onSave,onRemove}) {
 export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,onSaveSet,onAddSet,onRemoveSet,onExerciseChange,onOpenMenu}) {
   const groups=exerciseGroups(currentSets)
   const [selected,setSelected]=useState(()=>firstOpenExercise(groups))
+  const [infoOpen,setInfoOpen]=useState(false)
   const group=groups.find(g=>g[0].exercise_id===selected)??groups.find(g=>g[0].exercise_id===firstOpenExercise(groups))
   const selectedId=group?.[0].exercise_id??null
   useEffect(()=>{onExerciseChange?.(selectedId)},[selectedId,onExerciseChange])
@@ -44,7 +46,7 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
   return <>
     <div className="exercise-tabs" role="tablist" aria-label="Übungen im Training">{groups.map(g=>{
       const ex=g[0],done=g.every(s=>s.completed_at)
-      return <button key={ex.exercise_id} type="button" role="tab" id={`exercise-tab-${ex.exercise_id}`} aria-controls="active-exercise-panel" aria-selected={g===group} title={ex.exercise_name} aria-label={`${ex.exercise_name}${done?' · abgeschlossen':''}`} className={g===group?'selected':''} onClick={()=>setSelected(ex.exercise_id)}>{Array.from(ex.exercise_name.trim()).slice(0,2).join('').toLocaleUpperCase('de-DE')}{done&&<small aria-hidden="true">✓</small>}</button>
+      return <button key={ex.exercise_id} type="button" role="tab" id={`exercise-tab-${ex.exercise_id}`} aria-controls="active-exercise-panel" aria-selected={g===group} title={ex.exercise_name} aria-label={`${ex.exercise_name}${done?' · abgeschlossen':''}`} className={g===group?'selected':''} aria-haspopup={g===group?'dialog':undefined} onClick={()=>g===group?setInfoOpen(true):setSelected(ex.exercise_id)}>{Array.from(ex.exercise_name.trim()).slice(0,2).join('').toLocaleUpperCase('de-DE')}{done&&<small aria-hidden="true">✓</small>}</button>
     })}</div>
     <article className="card focused-exercise" role="tabpanel" id="active-exercise-panel" aria-labelledby={`exercise-tab-${first.exercise_id}`}>
       <div className="row exercise-heading"><h2>{first.exercise_name}</h2><button type="button" className="workout-menu-button" disabled={busy} aria-label="Übungsaktionen öffnen" aria-haspopup="dialog" onClick={()=>onOpenMenu(first.exercise_id)}>⋯</button></div>
@@ -61,5 +63,6 @@ export function ActiveExercises({data,session,currentSets,drafts,setDrafts,busy,
       {advice?<details className="advice active-advice" key={activeSet.id}><summary><strong>Satz #{activeIndex+1}: {advice.label}</strong><span className="advice-toggle-hint">Warum diese Empfehlung?</span></summary><dl className="advice-explanation">{advice.explanation.map(row=><div key={row.title}><dt>{row.title}</dt><dd>{row.text}</dd></div>)}</dl><small>Doppelte Progression: zunächst Wiederholungen innerhalb der Spanne steigern; wenn alle Vergleichssätze die Obergrenze erreicht haben oder ihre RIR-Schätzung ausreichend Reserve erkennen lässt, eine kleine Laststeigerung prüfen. Mit RIR zielt die Empfehlung auf etwa 1–2 Wiederholungen Reserve. Die Schätzung aus Wiederholungen + RIR ist keine sichere Leistungsprognose; diese konkrete Regel ist eine praktische App-Regel. <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/" target="_blank" rel="noreferrer">ACSM 2009</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/41843416/" target="_blank" rel="noreferrer">ACSM 2026</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/34542869/" target="_blank" rel="noreferrer">RIR-Schätzgenauigkeit</a></small></details>:<div className="notice">Alle Sätze dieser Übung sind abgeschlossen.{next&&<button className="primary" onClick={()=>setSelected(next[0].exercise_id)}>Nächste Übung</button>}</div>}
       <aside className="recent-training"><strong>Die letzten zwei Trainings</strong>{recent.length?recent.map(previous=><div key={previous.id}><p>{date(previous.finished_at)} · {previous.plan_name} · {previous.day_name}</p>{previous.sets.map((set,index)=><div className="recent-set" key={set.id}><span>Satz #{index+1}</span><span>{set.actual_weight_kg} kg</span><span>{set.actual_reps} Wdh.</span><span>RIR {rirText(set.rir)}</span></div>)}</div>):<p>Noch keine abgeschlossenen Trainings für diese Übung.</p>}</aside>
     </article>
+    {infoOpen&&<Suspense fallback={<div className="notice" role="status">Übungsdetails werden geladen …</div>}><ExerciseInfoDialog exercise={first} data={data} session={session} onClose={()=>setInfoOpen(false)}/></Suspense>}
   </>
 }
